@@ -1225,3 +1225,24 @@ String getDeviceId() {
   return cachedDeviceId;
 }
 
+// Generate a device key based on SHA1 hash of MAC address salted with other unique device info
+// Returns: original SHA1 + last 4 chars of double-hashed SHA1 (42 chars total)
+String getDeviceKey() {
+  static String cachedDeviceKey = "";
+  if (cachedDeviceKey.length() > 0) return cachedDeviceKey;
+  // The device string is deterministic as it needs to be consistent for the same device, even after a full flash erase
+  // MAC is salted with other consistent device info to avoid rainbow table attacks.
+  // If the MAC address is known by malicious actors, they could precompute SHA1 hashes to impersonate devices,
+  // but as WLED developers are just looking at statistics and not authenticating devices, this is acceptable.
+  // If the usage data was exfiltrated, you could not easily determine the MAC from the device ID without brute forcing SHA1
+
+  String firstHash = computeSHA1(generateDeviceFingerprint());
+
+  // Second hash: SHA1 of the first hash
+  String secondHash = computeSHA1(firstHash);
+
+  // Concatenate first hash + last 4 chars of second hash
+  cachedDeviceKey = firstHash + secondHash.substring(34);
+
+  return cachedDeviceKey;
+}
