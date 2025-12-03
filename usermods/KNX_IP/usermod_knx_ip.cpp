@@ -10,6 +10,11 @@
   #include <esp_sntp.h>
 #endif
 
+// Global error details buffer used by WLED GUI and usermods.
+// Provide a weak definition here so the symbol exists if core doesn't provide it,
+// but can be overridden by a stronger definition in the core firmware.
+char errorDetails[256] __attribute__((weak)) = { '\0' };
+
 
 // Helper: simple hash for config strings and segment offsets
 uint32_t KnxIpUsermod::computeGATableHash() const {
@@ -3160,3 +3165,6 @@ void KnxIpUsermod::appendConfigData(Print& uiScript)
     "if(card) card.id='knxip-card';})();"
   ));
 }
+
+static KnxIpUsermod KnxIp;
+REGISTER_USERMOD(KnxIp);

@@ -1551,7 +1551,23 @@ function readState(s,command=false)
 			case 19:
 				errstr = "A filesystem error has occured.";
 				break;
+			case 33:
+				errstr = "KNX Group Address conflict detected.";
+				break;
 		}
+
+		// Use detailed error message if available, otherwise use the standard error string
+		if (s.error_msg && s.error_msg.length > 0) {
+			errstr = s.error_msg;
+		}
+		
+		// Store error info globally for Info panel display
+		currentError = s.error;
+		currentErrorMsg = errstr;
+		
+		// Update Info panel if it's currently active
+		if (isInfo && lastinfo) populateInfo(lastinfo);
+		
 		showToast('Error ' + s.error + ": " + errstr, true);
 	}
 
