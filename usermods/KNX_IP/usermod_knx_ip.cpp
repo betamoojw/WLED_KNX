@@ -1,5 +1,6 @@
 #include "usermod_knx_ip.h"
 #include "wled.h"   // access to global 'strip' and segments
+#include "fcn_declare.h"
 #include "DPT.h"
 #include "esp-knx-ip.h"  // for KNX_UDP_LOG macro
 #include "src/dependencies/network/Network.h"
@@ -1685,6 +1686,21 @@ String KnxIpUsermod::getGATableHTML() const {
     KNX_UM_DEBUGF("[KNX-UM] getGATableHTML: usermod not enabled\n");
     return "";
   }
+
+  int8_t devKeyStatus = validateDeviceKey();
+  if (0 != devKeyStatus) {
+    KNX_UM_DEBUGF("[KNX-UM] getGATableHTML: Fail to validate device key (status=%d)\n", devKeyStatus);
+    String html = "";
+    if (-1 == devKeyStatus) {
+      html += "<p style='color:red;font-weight:bold;'>KNX Usermod Device Key is not set/fou!</p>";
+    } else if (-2 == devKeyStatus) {
+      html += "<p style='color:red;font-weight:bold;'>KNX Usermod Device Key is invalid!</p>";
+    } else {
+      html += "<p style='color:red;font-weight:bold;'>KNX Usermod Device Key validation error (code " + String(devKeyStatus) + ")</p>";
+    }
+    return html;
+  }
+
   uint8_t segmentCount = strip.getSegmentsNum();
   if (segmentCount == 0) segmentCount = 1;
   uint32_t hash = computeGATableHash();
@@ -2426,6 +2442,13 @@ void KnxIpUsermod::scheduleStatePublish() {
 
 void KnxIpUsermod::loop() {
   if (!enabled) return;
+
+  int8_t devKeyStatus = validateDeviceKey();
+  if (0 != devKeyStatus) {
+    KNX_UM_DEBUGF("[KNX-UM] Fail to validate device key (status=%d)\n", devKeyStatus);
+    return;
+  }
+
 // --- Detect LED capability (lc) change at runtime and rebuild GA mapping immediately ---
 static uint8_t       s_lastLc = 0xFF;
 static unsigned long s_lcChangedAt = 0;
