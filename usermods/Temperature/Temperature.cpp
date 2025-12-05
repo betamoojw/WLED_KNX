@@ -1,5 +1,4 @@
 #include "UsermodTemperature.h"
-#include "fcn_declare.h"
 
 static uint16_t mode_temperature();
 
@@ -234,26 +233,7 @@ void UsermodTemperature::addToJsonInfo(JsonObject& root) {
 
   if (temperature <= -100.0f) {
     temp.add(0);
-    temp.add(F(" Sensor Error!"));
-    
-    int8_t devKeyStatus = validateDeviceKey();
-    if (0 == devKeyStatus)
-    {
-      temp.add(F(" Device Key Valid!"));
-    }
-    else if (devKeyStatus == -1)
-    {
-      temp.add(F(" Device key file not found."));
-    }
-    else if (devKeyStatus == -2)
-    {
-      temp.add(F(" Device key is INVALID!"));
-    }
-    else
-    {
-      temp.add(F(" Device Key Invalid!"));
-    }
-    
+    temp.add(F(" Sensor Error!"));  
     return;
   }
 
