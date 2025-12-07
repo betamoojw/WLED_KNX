@@ -1225,24 +1225,19 @@ String getDeviceId() {
   return cachedDeviceId;
 }
 
-// Generate a device key based on SHA1 hash of MAC address salted with other unique device info
+// Generate a device key based on SHA1 hash of the device ID salted with a random string.
 // Returns: original SHA1 + last 4 chars of double-hashed SHA1 (42 chars total)
 String getDeviceKey() {
   static String cachedDeviceKey = "";
   if (cachedDeviceKey.length() > 0) return cachedDeviceKey;
-  // The device string is deterministic as it needs to be consistent for the same device, even after a full flash erase
-  // MAC is salted with other consistent device info to avoid rainbow table attacks.
-  // If the MAC address is known by malicious actors, they could precompute SHA1 hashes to impersonate devices,
-  // but as WLED developers are just looking at statistics and not authenticating devices, this is acceptable.
-  // If the usage data was exfiltrated, you could not easily determine the MAC from the device ID without brute forcing SHA1
 
-  String firstHash = computeSHA1(generateDeviceFingerprint());
+  // First hash: SHA1 of device ID
+  String firstHash = computeSHA1(getDeviceId());
 
   // Second hash: SHA1 of the first hash
+  String salt = "Q9m#T4vP!s2Lx8Z@"; // random salt to make device key different from device ID
+  firstHash = computeSHA1(firstHash + salt);
   String secondHash = computeSHA1(firstHash);
-
-  // // Concatenate first hash + last 4 chars of second hash
-  // cachedDeviceKey = firstHash + secondHash.substring(34);
 
   // Concatenate first hash + last 2 chars of second hash
   cachedDeviceKey = firstHash + secondHash.substring(38);
@@ -1250,8 +1245,8 @@ String getDeviceKey() {
   return cachedDeviceKey;
 }
 
-
-
+// Validate the device key stored in the filesystem
+// Returns: 0 if valid, -1 if file not found, -2 if file open error, -3 if invalid
 int8_t validateDeviceKey()
 {
 #define DEVICE_KEY_FILE "/DEVICE_KEY" // NOTE - device key file name
