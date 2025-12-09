@@ -274,6 +274,8 @@ private:
   void onKnxSegmentRGB(uint8_t segmentIndex, uint8_t r, uint8_t g, uint8_t b);
   void onKnxSegmentEffect(uint8_t segmentIndex, uint8_t fxIndex);
 
+  void warningEffectBeforeReboot();
+
   void evalAndPublishTempAlarm(uint16_t ga, float tempC, float maxC, bool& lastState, const char* tag);
 
   // System clock

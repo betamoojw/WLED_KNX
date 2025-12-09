@@ -1297,6 +1297,34 @@ void KnxIpUsermod::onKnxSegmentEffect(uint8_t segmentIndex, uint8_t fxIndex) {
   stateUpdated(CALL_MODE_DIRECT_CHANGE);
 }
 
+// Quick blink red effect to indicate impending reboot
+void KnxIpUsermod::warningEffectBeforeReboot() {
+  for(uint8_t segIdx = 0; segIdx < strip.getSegmentsNum(); segIdx++) {
+    Segment& seg = strip.getSegment(segIdx);
+    seg.setColor(0, RGBW32(255, 0, 0, 0)); // Red
+    seg.on = true;
+    seg.opacity = 255;
+    seg.mode = FX_MODE_BLINK;
+    seg.speed = 240; 
+    seg.intensity = 128;
+
+    KNX_UM_DEBUGF("[KNX-UM] Segment %d power: %s\n", segIdx, seg.on ? "ON" : "OFF");
+    KNX_UM_DEBUGF("[KNX-UM] Segment %d brightness: %d\n", segIdx, seg.opacity);
+    KNX_UM_DEBUGF("[KNX-UM] Segment %d RGB: R=%d G=%d B=%d\n", segIdx, 255, 0, 0);
+    KNX_UM_DEBUGF("[KNX-UM] Segment %d effect: %d\n", segIdx, seg.mode);
+  }
+  
+  colorUpdated(CALL_MODE_DIRECT_CHANGE);
+  stateUpdated(CALL_MODE_DIRECT_CHANGE);
+  // this will notify clients of update (websockets,mqtt,etc)
+  updateInterfaces(CALL_MODE_BUTTON);
+
+  KNX_UM_DEBUGLN("[KNX-UM] Warning effect before reboot triggered\n");
+
+  delay(60 * 1000);  // Enough time for messages to be sent.
+  WLED::instance().reset();
+}
+
 bool KnxIpUsermod::readEspInternalTempC(float& outC) const {
 #if defined(ESP8266) || defined(CONFIG_IDF_TARGET_ESP32S2)
   Serial.printf("ESP-int: not supported on this chip\n");
@@ -2463,19 +2491,7 @@ void KnxIpUsermod::loop() {
 
         KNX_UM_DEBUGLN("[KNX-UM] Set effect to \"Red Blink\" as warn before rebooting\n");
         // Set effect to "Red Blink" before rebooting to avoid FX-related issues on restart
-        strip.setBrightness(255);  // Full brightness
-        strip.getMainSegment().setColor(0,RGBW32(255,0,0,0));
-        effectSpeed = 240;
-        effectIntensity = 128;
-        const uint8_t fxIndex = 1; // Blink
-        strip.getMainSegment().setMode(0, fxIndex);
-        stateUpdated(CALL_MODE_DIRECT_CHANGE);
-
-        // this will notify clients of update (websockets,mqtt,etc)
-        updateInterfaces(CALL_MODE_BUTTON);
-
-        delay(60 * 1000);  // Enough time for messages to be sent.
-        WLED::instance().reset();
+        warningEffectBeforeReboot();
 
         // Should never reach here
         // counter = 0; just for logic completeness
