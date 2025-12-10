@@ -317,4 +317,6 @@ private:
   unsigned long lastTime = 0; // Used for periodical task
   uint8_t counter = 0;
   uint8_t trialMinsLeft = TIMEOUT_60_MINUTES;
+
+  bool rebootRequested = false;
 };

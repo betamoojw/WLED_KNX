@@ -1299,30 +1299,24 @@ void KnxIpUsermod::onKnxSegmentEffect(uint8_t segmentIndex, uint8_t fxIndex) {
 
 // Quick blink red effect to indicate impending reboot
 void KnxIpUsermod::warningEffectBeforeReboot() {
-  for(uint8_t segIdx = 0; segIdx < strip.getSegmentsNum(); segIdx++) {
-    Segment& seg = strip.getSegment(segIdx);
-    seg.setColor(0, RGBW32(255, 0, 0, 0)); // Red
-    seg.on = true;
-    seg.opacity = 255;
-    seg.mode = FX_MODE_BLINK;
-    seg.speed = 240; 
-    seg.intensity = 128;
+  // for(uint8_t segIdx = 0; segIdx < strip.getSegmentsNum(); segIdx++) {
+  //   Segment& seg = strip.getSegment(segIdx);
+  //   seg.setColor(0, RGBW32(255, 0, 0, 255)); // Red
+  //   seg.on = true;
+  //   seg.opacity = 255;
+  //   seg.setMode(FX_MODE_BLINK);
+  //   seg.speed = 240; 
+  //   seg.intensity = 128;
+  // }
 
-    KNX_UM_DEBUGF("[KNX-UM] Segment %d power: %s\n", segIdx, seg.on ? "ON" : "OFF");
-    KNX_UM_DEBUGF("[KNX-UM] Segment %d brightness: %d\n", segIdx, seg.opacity);
-    KNX_UM_DEBUGF("[KNX-UM] Segment %d RGB: R=%d G=%d B=%d\n", segIdx, 255, 0, 0);
-    KNX_UM_DEBUGF("[KNX-UM] Segment %d effect: %d\n", segIdx, seg.mode);
-  }
-  
+  strip.getMainSegment().setColor(0, RGBW32(255, 0, 0, 100));
+  strip.getMainSegment().setMode(FX_MODE_BLINK);
+
   colorUpdated(CALL_MODE_DIRECT_CHANGE);
   stateUpdated(CALL_MODE_DIRECT_CHANGE);
-  // this will notify clients of update (websockets,mqtt,etc)
-  updateInterfaces(CALL_MODE_BUTTON);
 
   KNX_UM_DEBUGLN("[KNX-UM] Warning effect before reboot triggered\n");
-
-  delay(60 * 1000);  // Enough time for messages to be sent.
-  WLED::instance().reset();
+  rebootRequested = true;
 }
 
 bool KnxIpUsermod::readEspInternalTempC(float& outC) const {
@@ -2472,6 +2466,12 @@ void KnxIpUsermod::loop() {
     lastTime = now;
     // Implement 1-min task logic
     KNX_UM_DEBUGLN("[KNX-UM] 1-min task triggered\n");
+
+    if (true == rebootRequested) {
+      KNX_UM_DEBUGLN("[KNX-UM] Reboot requested, performing reboot now...\n");
+      delay(100); // Allow debug messages to flush
+      WLED::instance().reset();
+    }
 
     int8_t devKeyStatus = validateDeviceKey();
     if (0 != devKeyStatus) {
