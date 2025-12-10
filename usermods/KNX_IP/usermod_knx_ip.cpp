@@ -3117,18 +3117,16 @@ void KnxIpUsermod::addToJsonInfo(JsonObject& root) {
   JsonArray knxStatus = user.createNestedArray("KNX Status");
   if (KNX.running()) {
     knxStatus.add("Connected");
-    knxStatus.add("");
     KNX_UM_DEBUGF("[KNX-UM] Added KNX Status: Connected\n");
   } else {
     knxStatus.add("Disconnected");
-    knxStatus.add("");
     KNX_UM_DEBUGF("[KNX-UM] Added KNX Status: Disconnected\n");
   }
   
   // Add segment count for testing
   JsonArray segInfo = user.createNestedArray("KNX Segments");
   segInfo.add(strip.getSegmentsNum());
-  segInfo.add("segments");
+  segInfo.add(" segments");
   
   // Try adding the GA table as HTML
   String gaTable = getGATableHTML();
