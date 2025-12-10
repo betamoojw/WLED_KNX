@@ -926,7 +926,7 @@ void KnxIpUsermod::onKnxRGB(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void KnxIpUsermod::onKnxEffect(uint8_t fxIndex) {
-  strip.getMainSegment().setMode(0, fxIndex);
+  strip.getMainSegment().setMode(fxIndex);
   stateUpdated(CALL_MODE_DIRECT_CHANGE);
   scheduleStatePublish();
 }
