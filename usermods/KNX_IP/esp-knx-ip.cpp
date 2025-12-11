@@ -4,7 +4,8 @@
 #endif
 
 // ======== UDP Debug Support ========
-#if KNX_UDP_DEBUG && !defined(UNIT_TEST)
+// #ifdef KNX_UDP_DEBUG && !defined(UNIT_TEST)
+#ifdef KNX_UDP_DEBUG
 #include <WiFiUdp.h>
 static WiFiUDP debugUdp;
 static IPAddress debugTarget;
@@ -73,42 +74,49 @@ KnxIpCore KNX;
 // small local hex-dump helper for debugging (first up to 96 bytes)
 static void knx_dump_hex(const char* tag, const uint8_t* data, size_t len) {
   if (!data || !len) { return; }
+
   const size_t maxDump = len < 96 ? len : 96;
-  Serial.printf("[KNX] %s (%u bytes): ", tag, (unsigned)len);
+  KNX_LOG("%s (%u bytes): ", tag, (unsigned)len);
+
   for (size_t i = 0; i < maxDump; ++i) {
+#ifdef KNX_DEBUG
     Serial.printf("%02X", data[i]);
     if (i + 1 < maxDump) Serial.print(' ');
+#endif
   }
+
+#ifdef KNX_DEBUG
   if (maxDump < len) Serial.print(" ...");
   Serial.print('\n');
+#endif
 }
 
 
 // ======== Begin / End / Loop ========
 bool KnxIpCore::begin() {
-  sendUdpDebug("[KNX] KnxIpCore::begin() called");
+  KNX_UDP_LOG("KnxIpCore::begin() called");
   if (_running) {
-    sendUdpDebug("[KNX] Already running, returning true");
+    KNX_UDP_LOG("Already running, returning true");
     return true;
   }
   if (!KnxNetworkInterface::isConnected()) {
-    sendUdpDebug("[KNX] ERROR: Network not connected");
+    KNX_UDP_LOG("ERROR: Network not connected");
     KNX_LOG("begin(): Network not connected.");
     return false;
   }
 
   IPAddress localIP = KnxNetworkInterface::localIP();
-  sendUdpDebug("[KNX] Local IP: %s", localIP.toString().c_str());
+  KNX_UDP_LOG("Local IP: %s", localIP.toString().c_str());
 
   // Create UDP socket
   _sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (_sock < 0) { 
     _rxErrors++; 
-    sendUdpDebug("[KNX] ERROR: socket() failed errno=%d", errno);
+    KNX_UDP_LOG("ERROR: socket() failed errno=%d", errno);
     KNX_LOG("begin(): socket() failed errno=%d", errno); 
     return false; 
   }
-  sendUdpDebug("[KNX] Socket created: %d", _sock);
+  KNX_UDP_LOG("Socket created: %d", _sock);
 
   // Allow address reuse
   int yes = 1;
@@ -121,17 +129,17 @@ bool KnxIpCore::begin() {
   local.sin_addr.s_addr = htonl(INADDR_ANY);
   if (::bind(_sock, (struct sockaddr*)&local, sizeof(local)) < 0) {
     _rxErrors++; 
-    sendUdpDebug("[KNX] ERROR: bind() failed errno=%d", errno);
+    KNX_UDP_LOG("ERROR: bind() failed errno=%d", errno);
     KNX_LOG("begin(): bind() failed errno=%d", errno); 
     ::close(_sock); _sock=-1; return false; 
   }
-  sendUdpDebug("[KNX] Socket bound to port %d", KNX_IP_UDP_PORT);
+  KNX_UDP_LOG("Socket bound to port %d", KNX_IP_UDP_PORT);
 
 in_addr maddr{};        maddr.s_addr = inet_addr("224.0.23.12");        // KNX group
 in_addr ifaddr{};       ifaddr.s_addr = inet_addr(KnxNetworkInterface::localIP().toString().c_str());
 _lastIfAddr = ifaddr;
 
-sendUdpDebug("[KNX] Joining multicast 224.0.23.12 on interface %s", KnxNetworkInterface::localIP().toString().c_str());
+KNX_UDP_LOG("Joining multicast 224.0.23.12 on interface %s", KnxNetworkInterface::localIP().toString().c_str());
 
 // Join multicast group on all interfaces (or use ifaddr here if you prefer)
 ip_mreq mreq{}; 
@@ -139,10 +147,10 @@ mreq.imr_multiaddr = maddr;
 mreq.imr_interface = ifaddr;
 if (::setsockopt(_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
   _rxErrors++; 
-  sendUdpDebug("[KNX] ERROR: IP_ADD_MEMBERSHIP failed errno=%d", errno);
+  KNX_UDP_LOG("ERROR: IP_ADD_MEMBERSHIP failed errno=%d", errno);
   KNX_LOG("begin(): IP_ADD_MEMBERSHIP failed errno=%d", errno);
 } else {
-  sendUdpDebug("[KNX] Successfully joined multicast group");
+  KNX_UDP_LOG("Successfully joined multicast group");
 }
 
 // TTL=1 and LOOP=1 are fine…
@@ -151,10 +159,10 @@ uint8_t loop = 1; (void)::setsockopt(_sock, IPPROTO_IP, IP_MULTICAST_LOOP, &loop
 
 // Pin outgoing multicast to the STA interface
   if (::setsockopt(_sock, IPPROTO_IP, IP_MULTICAST_IF, &ifaddr, sizeof(ifaddr)) < 0) {
-    sendUdpDebug("[KNX] ERROR: IP_MULTICAST_IF failed errno=%d", errno);
+    KNX_UDP_LOG("ERROR: IP_MULTICAST_IF failed errno=%d", errno);
     KNX_LOG("begin(): IP_MULTICAST_IF failed errno=%d", errno);
   } else {
-    sendUdpDebug("[KNX] Multicast interface set successfully");
+    KNX_UDP_LOG("Multicast interface set successfully");
   }
 // Prepare sockaddr for send()
 memset(&_mcastAddr, 0, sizeof(_mcastAddr));
@@ -170,7 +178,7 @@ _mcastAddr.sin_addr   = maddr;
           (unsigned)KNX_IP_UDP_PORT, _sock);
   
   _running = true;
-  sendUdpDebug("[KNX] KnxIpCore::begin() completed successfully, running=%d", _running);
+  KNX_UDP_LOG("KnxIpCore::begin() completed successfully, running=%d", _running);
   return true;
 }
 
@@ -231,7 +239,7 @@ void KnxIpCore::loop() {
   int len = ::recvfrom(_sock, (char*)buf, sizeof(buf), 0, (struct sockaddr*)&from, &flen);
   if (len <= 0) return; // EWOULDBLOCK
   
-  sendUdpDebug("[KNX] Received packet: %d bytes from %d.%d.%d.%d", 
+  KNX_UDP_LOG("Received packet: %d bytes from %d.%d.%d.%d", 
     len, 
     (int)((ntohl(from.sin_addr.s_addr) >> 24) & 0xFF),
     (int)((ntohl(from.sin_addr.s_addr) >> 16) & 0xFF), 

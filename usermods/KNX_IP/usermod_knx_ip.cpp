@@ -675,7 +675,7 @@ void KnxIpUsermod::checkGAConflictsAndNotifyGUI() {
     extern byte errorFlag;
     errorFlag = 33; // ERR_KNX_GA_CONFLICT
     
-    KNX_UM_WARNF("[KNX-UM] GA conflicts detected - check WLED GUI for notification\n");
+    KNX_UM_WARNF("[KNX-UM][CONFLICT] GA conflicts detected - check WLED GUI for notification\n");
     
     // Log detailed conflict information for debugging
     #ifdef KNX_UM_DEBUG
@@ -900,12 +900,12 @@ void KnxIpUsermod::onKnxBrightness(uint8_t pct) {
 
 void KnxIpUsermod::onKnxRGB(uint8_t r, uint8_t g, uint8_t b) {
   uint8_t cr,cg,cb,cw; getCurrentRGBW(cr,cg,cb,cw);
-  Serial.printf("[KNX-UM] onKnxRGB: R=%d G=%d B=%d -> setting R=%d G=%d B=%d W=%d\n", r, g, b, r, g, b, cw);
-  Serial.printf("[KNX-UM] onKnxRGB: Current WLED state: bri=%d, on=%d\n", bri, (bri > 0));
+  KNX_UM_DEBUGF("[KNX-UM] onKnxRGB: R=%d G=%d B=%d -> setting R=%d G=%d B=%d W=%d\n", r, g, b, r, g, b, cw);
+  KNX_UM_DEBUGF("[KNX-UM] onKnxRGB: Current WLED state: bri=%d, on=%d\n", bri, (bri > 0));
   
   // Auto-enable feature: if brightness is 0 and color changes, set brightness automatically
   if (autoEnableOnColor && bri == 0 && (r > 0 || g > 0 || b > 0)) {
-    Serial.printf("[KNX-UM] Auto-enable: Color changed while brightness=0, setting brightness to %d\n", autoEnableBrightness);
+    KNX_UM_DEBUGF("[KNX-UM] Auto-enable: Color changed while brightness=0, setting brightness to %d\n", autoEnableBrightness);
     bri = autoEnableBrightness;
   }
   
@@ -919,9 +919,9 @@ void KnxIpUsermod::onKnxRGB(uint8_t r, uint8_t g, uint8_t b) {
   colPri[2] = b;
   colPri[3] = cw;
   
-  Serial.printf("[KNX-UM] onKnxRGB: segment color and global colPri updated, calling stateUpdated()\n");
+  KNX_UM_DEBUGF("[KNX-UM] onKnxRGB: segment color and global colPri updated, calling stateUpdated()\n");
   stateUpdated(CALL_MODE_DIRECT_CHANGE);
-  Serial.printf("[KNX-UM] onKnxRGB: stateUpdated() called, scheduling state publish\n");
+  KNX_UM_DEBUGF("[KNX-UM] onKnxRGB: stateUpdated() called, scheduling state publish\n");
   scheduleStatePublish();
 }
 
@@ -1319,18 +1319,18 @@ void KnxIpUsermod::warningEffectBeforeReboot() {
 
 bool KnxIpUsermod::readEspInternalTempC(float& outC) const {
 #if defined(ESP8266) || defined(CONFIG_IDF_TARGET_ESP32S2)
-  Serial.printf("ESP-int: not supported on this chip\n");
+  KNX_UM_DEBUGF("ESP-int: not supported on this chip\n");
   return false;
 #else
   // ESP32 / ESP32S3 / ESP32C3: direct internal sensor read
   float v = temperatureRead();                 // degrees C (approximate)
   if (isnan(v) || v < -40.0f || v > 150.0f) {  // quick sanity
-    Serial.printf("ESP-internal Temp: invalid (%.1f)\n", v);
+    KNX_UM_DEBUGF("ESP-internal Temp: invalid (%.1f)\n", v);
     return false;
   }
   // match the other usermod’s rounding (0.1 °C)
   v = roundf(v * 10.0f) / 10.0f;
-  Serial.printf("ESP-internal Temp: OK (%.1f °C)\n", v);
+  KNX_UM_DEBUGF("ESP-internal Temp: OK (%.1f °C)\n", v);
   outC = v;
   return true;
 #endif
@@ -1340,13 +1340,13 @@ bool KnxIpUsermod::readDallasTempC(float& outC) const {
   if (&wled_get_temperature_c != nullptr) {
     float v = wled_get_temperature_c();
     if (!isnan(v)) {
-      Serial.printf("Dallas Temp probe: OK (%.1f °C)\n", v);
+      KNX_UM_DEBUGF("Dallas Temp probe: OK (%.1f °C)\n", v);
       outC = v;
       return true;
     }
-    Serial.printf("Dallas Temp probe: NaN\n");
+    KNX_UM_DEBUGF("Dallas Temp probe: NaN\n");
   } else {
-    Serial.printf("Dallas Temp probe: symbol missing\n");
+    KNX_UM_DEBUGF("Dallas Temp probe: symbol missing\n");
   }
   return false;
 }
@@ -1356,7 +1356,7 @@ void KnxIpUsermod::publishTemperatureIfChanged() {
     return;
   }
 
-  Serial.printf("[KNX-UM][TEMP] publishTemperatureIfChanged() called\n");
+  KNX_UM_DEBUGF("[KNX-UM][TEMP] publishTemperatureIfChanged() called\n");
 
   bool anyTempChanged = false;
 
@@ -1369,7 +1369,7 @@ void KnxIpUsermod::publishTemperatureIfChanged() {
         uint8_t buf[4];
         KnxIpCore::pack4ByteFloat(tEsp, buf);
         bool ok = KNX.groupValueWrite(GA_OUT_INT_TEMP, buf, 4);
-        Serial.printf("TX ESP internal Temp: %.1f °C (%s)\n", tEsp, ok ? "OK" : "FAIL");
+        KNX_UM_DEBUGF("TX ESP internal Temp: %.1f °C (%s)\n", tEsp, ok ? "OK" : "FAIL");
         evalAndPublishTempAlarm(GA_OUT_INT_TEMP_ALARM, tEsp, intTempAlarmMaxC, lastIntTempAlarmState, "ESP-int");
         g_lastEspTemp = tEsp;
         anyTempChanged = true;
@@ -1386,7 +1386,7 @@ void KnxIpUsermod::publishTemperatureIfChanged() {
         uint8_t buf[4];
         KnxIpCore::pack4ByteFloat(tDallas, buf);
         bool ok = KNX.groupValueWrite(GA_OUT_TEMP, buf, 4);
-        Serial.printf("TX Dallas Temp: %.1f °C (%s)\n", tDallas, ok ? "OK" : "FAIL");
+        KNX_UM_DEBUGF("TX Dallas Temp: %.1f °C (%s)\n", tDallas, ok ? "OK" : "FAIL");
         evalAndPublishTempAlarm(GA_OUT_TEMP_ALARM, tDallas, dallasTempAlarmMaxC, lastDallasTempAlarmState, "Dallas");
         g_lastDallasTemp = tDallas;
         anyTempChanged = true;
@@ -1395,7 +1395,7 @@ void KnxIpUsermod::publishTemperatureIfChanged() {
   }
 
   if (!anyTempChanged && !g_firstCall) {
-    Serial.printf("[KNX-UM][TEMP] No temperature changes detected - skipping publish\n");
+    KNX_UM_DEBUGF("[KNX-UM][TEMP] No temperature changes detected - skipping publish\n");
   }
 }
 
@@ -1409,7 +1409,7 @@ void KnxIpUsermod::evalAndPublishTempAlarm(uint16_t ga, float tempC, float maxC,
       uint8_t b0 = 0;
       KNX.groupValueWrite(ga, &b0, 1);
       lastState = false;
-      Serial.printf("[KNX-UM][TEMP] %s alarm DISABLED -> send 0 to 0x%04X\n", tag, ga);
+      KNX_UM_DEBUGF("[KNX-UM][TEMP] %s alarm DISABLED -> send 0 to 0x%04X\n", tag, ga);
     }
     return;
   }
@@ -1424,12 +1424,12 @@ void KnxIpUsermod::evalAndPublishTempAlarm(uint16_t ga, float tempC, float maxC,
   if (newState != lastState) {
     uint8_t bit = newState ? 1 : 0;    // DPST-1-5: 1 = alarm active
     bool ok = KNX.groupValueWrite(ga, &bit, 1);    // core packs 1-bit correctly
-    Serial.printf("[KNX-UM][TEMP] %s alarm %s @ %.2f°C (thr=%.2f°C, hyst=%.2f) -> GA 0x%04X (%s)\n",
+    KNX_UM_DEBUGF("[KNX-UM][TEMP] %s alarm %s @ %.2f°C (thr=%.2f°C, hyst=%.2f) -> GA 0x%04X (%s)\n",
                   tag, newState ? "ON" : "OFF", tempC, maxC, tempAlarmHystC, ga, ok?"OK":"FAIL");
     lastState = newState;
   }
   else {
-    Serial.printf("[KNX-UM][TEMP] %s alarm unchanged (%s) @ %.2f°C "
+    KNX_UM_DEBUGF("[KNX-UM][TEMP] %s alarm unchanged (%s) @ %.2f°C "
                   "(thr=%.2f°C, hyst=%.2f)\n",
                   tag, lastState ? "ON" : "OFF",
                   tempC, maxC, tempAlarmHystC);
@@ -1455,7 +1455,7 @@ void KnxIpUsermod::setSystemClockYMDHMS(int year, int month, int day, int hour, 
 
   time_t epoch = mktime(&t); // local time
   if (epoch == (time_t)-1) {
-    Serial.printf("[KNX-UM][TIME] mktime() failed for %04d-%02d-%02d %02d:%02d:%02d\n",
+    KNX_UM_DEBUGF("[KNX-UM][TIME] mktime() failed for %04d-%02d-%02d %02d:%02d:%02d\n",
                   year, month, day, hour, minute, second);
     return;
   }
@@ -1470,12 +1470,12 @@ void KnxIpUsermod::setSystemClockYMDHMS(int year, int month, int day, int hour, 
 #endif
 ntpLastSyncTime = (unsigned long)epoch;
 
-Serial.printf("[KNX-UM][TIME] Clock set to %04d-%02d-%02d %02d:%02d:%02d (local)\n",
+KNX_UM_DEBUGF("[KNX-UM][TIME] Clock set to %04d-%02d-%02d %02d:%02d:%02d (local)\n",
                 year, month, day, hour, minute, second);
 
 time_t chk = time(nullptr);
 struct tm cur{}; localtime_r(&chk, &cur);
-Serial.printf("[KNX-UM][TIME] Clock set -> %04d-%02d-%02d %02d:%02d:%02d (local, read-back)\n",
+KNX_UM_DEBUGF("[KNX-UM][TIME] Clock set -> %04d-%02d-%02d %02d:%02d:%02d (local, read-back)\n",
                 cur.tm_year + 1900, cur.tm_mon + 1, cur.tm_mday,
                 cur.tm_hour, cur.tm_min, cur.tm_sec);
 }
@@ -1498,7 +1498,7 @@ void KnxIpUsermod::setSystemClockYMDHMS_withDST(int year, int month, int day, in
 
   time_t epoch = mktime(&t);
   if (epoch == (time_t)-1) {
-    Serial.printf("[KNX-UM][TIME] mktime() failed (DST=%d)\n", isDst);
+    KNX_UM_DEBUGF("[KNX-UM][TIME] mktime() failed (DST=%d)\n", isDst);
     return;
   }
   struct timeval tv{ .tv_sec = epoch, .tv_usec = 0 };
@@ -1513,7 +1513,7 @@ void KnxIpUsermod::setSystemClockYMDHMS_withDST(int year, int month, int day, in
 
   time_t chk = time(nullptr);
   struct tm cur{}; localtime_r(&chk, &cur);
-  Serial.printf("[KNX-UM][TIME] DPT19 set -> %04d-%02d-%02d %02d:%02d:%02d (local, read-back, DST=%d)\n",
+  KNX_UM_DEBUGF("[KNX-UM][TIME] DPT19 set -> %04d-%02d-%02d %02d:%02d:%02d (local, read-back, DST=%d)\n",
                 cur.tm_year + 1900, cur.tm_mon + 1, cur.tm_mday,
                 cur.tm_hour, cur.tm_min, cur.tm_sec, cur.tm_isdst);
 }
@@ -1533,7 +1533,7 @@ static inline void applyKnxWallClock(int year, int month, int day, int hour, int
   // Convert local wall time -> UTC epoch using WLED’s configured TZ/DST
   time_t epoch = mktime(&t);
   if (epoch == (time_t)-1) {
-    Serial.printf("[KNX-UM][TIME] mktime() failed for %04d-%02d-%02d %02d:%02d:%02d (isDst=%d)\n",
+    KNX_UM_DEBUGF("[KNX-UM][TIME] mktime() failed for %04d-%02d-%02d %02d:%02d:%02d (isDst=%d)\n",
                   year, month, day, hour, minute, second, isDst);
     return;
   }
@@ -1548,20 +1548,26 @@ static inline void applyKnxWallClock(int year, int month, int day, int hour, int
   // Debug: read back local time
   time_t chk = time(nullptr);
   struct tm cur{}; localtime_r(&chk, &cur);
-  Serial.printf("[KNX-UM][TIME] KNX->API set: %04d-%02d-%02d %02d:%02d:%02d (local, read-back)\n",
+  KNX_UM_DEBUGF("[KNX-UM][TIME] KNX->API set: %04d-%02d-%02d %02d:%02d:%02d (local, read-back)\n",
                 cur.tm_year + 1900, cur.tm_mon + 1, cur.tm_mday,
                 cur.tm_hour, cur.tm_min, cur.tm_sec);
 }
 
 static void dumpBytesHexLocal(const uint8_t* p, uint8_t len) {
   if (!p || !len) return;
+
+#ifdef KNX_UM_DEBUG
   Serial.print("[KNX-UM][TIME] Raw: ");
+#endif
+
   for (uint8_t i = 0; i < len; i++) {
+#ifdef KNX_UM_DEBUG
     if (p[i] < 16) Serial.print('0');
     Serial.print(p[i], HEX);
     Serial.print(i + 1 < len ? ' ' : ' ');
+#endif
   }
-  Serial.println();
+  KNX_UM_DEBUGLN();
 }
 
 void KnxIpUsermod::onKnxTime_10_001(const uint8_t* p, uint8_t len) {
@@ -1587,7 +1593,7 @@ void KnxIpUsermod::onKnxTime_10_001(const uint8_t* p, uint8_t len) {
 
   time_t epoch = mktime(&t);                     // interpret as *local* wall clock -> UTC epoch
   if (epoch == (time_t)-1) {
-    Serial.printf("[KNX-UM][TIME] DPT10 mktime() failed for %02d:%02d:%02d\n", hour, minute, second);
+    KNX_UM_DEBUGF("[KNX-UM][TIME] DPT10 mktime() failed for %02d:%02d:%02d\n", hour, minute, second);
     return;
   }
 
@@ -1600,7 +1606,7 @@ void KnxIpUsermod::onKnxTime_10_001(const uint8_t* p, uint8_t len) {
 #endif
 
   struct tm rb{}; localtime_r(&epoch, &rb);
-  Serial.printf("[KNX-UM][TIME] DPT10 set -> %04d-%02d-%02d %02d:%02d:%02d (local)\n",
+  KNX_UM_DEBUGF("[KNX-UM][TIME] DPT10 set -> %04d-%02d-%02d %02d:%02d:%02d (local)\n",
                 rb.tm_year + 1900, rb.tm_mon + 1, rb.tm_mday, rb.tm_hour, rb.tm_min, rb.tm_sec);
 }
 
@@ -1628,7 +1634,7 @@ void KnxIpUsermod::onKnxDate_11_001(const uint8_t* p, uint8_t len) {
 
   time_t epoch = mktime(&t);           // local wall clock -> UTC epoch
   if (epoch == (time_t)-1) {
-    Serial.printf("[KNX-UM][TIME] DPT11 mktime() failed for %04d-%02d-%02d\n", year, month, day);
+    KNX_UM_DEBUGF("[KNX-UM][TIME] DPT11 mktime() failed for %04d-%02d-%02d\n", year, month, day);
     return;
   }
 
@@ -1641,7 +1647,7 @@ void KnxIpUsermod::onKnxDate_11_001(const uint8_t* p, uint8_t len) {
 #endif
 
   struct tm rb{}; localtime_r(&epoch, &rb);
-  Serial.printf("[KNX-UM][TIME] DPT11 set -> %04d-%02d-%02d %02d:%02d:%02d (local)\n",
+  KNX_UM_DEBUGF("[KNX-UM][TIME] DPT11 set -> %04d-%02d-%02d %02d:%02d:%02d (local)\n",
                 rb.tm_year + 1900, rb.tm_mon + 1, rb.tm_mday, rb.tm_hour, rb.tm_min, rb.tm_sec);
 }
 
@@ -1663,7 +1669,7 @@ void KnxIpUsermod::onKnxDateTime_19_001(const uint8_t* p, uint8_t len) {
   const bool summerTime  = (flags & 0x10) != 0;
 
   if (invalidDate || invalidTime) {
-    Serial.printf("[KNX-UM][TIME] DPT19 invalid flags=0x%02X -> ignore\n", flags);
+    KNX_UM_DEBUGF("[KNX-UM][TIME] DPT19 invalid flags=0x%02X -> ignore\n", flags);
     return;
   }
 
@@ -1684,7 +1690,7 @@ void KnxIpUsermod::onKnxDateTime_19_001(const uint8_t* p, uint8_t len) {
 
   time_t epoch = mktime(&t);         // local wall clock -> UTC epoch
   if (epoch == (time_t)-1) {
-    Serial.printf("[KNX-UM][TIME] DPT19 mktime() failed for %04d-%02d-%02d %02d:%02d:%02d (DST=%d)\n",
+    KNX_UM_DEBUGF("[KNX-UM][TIME] DPT19 mktime() failed for %04d-%02d-%02d %02d:%02d:%02d (DST=%d)\n",
                   year, month, day, hour, minute, second, (int)summerTime);
     return;
   }
@@ -1698,7 +1704,7 @@ void KnxIpUsermod::onKnxDateTime_19_001(const uint8_t* p, uint8_t len) {
 #endif
 
   struct tm rb{}; localtime_r(&epoch, &rb);
-  Serial.printf("[KNX-UM][TIME] DPT19 set -> %04d-%02d-%02d %02d:%02d:%02d (local, DST=%d, flags=0x%02X)\n",
+  KNX_UM_DEBUGF("[KNX-UM][TIME] DPT19 set -> %04d-%02d-%02d %02d:%02d:%02d (local, DST=%d, flags=0x%02X)\n",
                 rb.tm_year + 1900, rb.tm_mon + 1, rb.tm_mday,
                 rb.tm_hour, rb.tm_min, rb.tm_sec, (int)summerTime, flags);
 }
@@ -1909,7 +1915,7 @@ void KnxIpUsermod::setup() {
   // Parse & set PA
   if (uint16_t pa = parsePA(individualAddr)) {
     KNX.setIndividualAddress(pa);
-    Serial.printf("[KNX-UM] PA set to %u.%u.%u (0x%04X)\n",
+    KNX_UM_DEBUGF("[KNX-UM] PA set to %u.%u.%u (0x%04X)\n",
                   (unsigned)((pa>>12)&0x0F), (unsigned)((pa>>8)&0x0F), (unsigned)(pa&0xFF), pa);
   } else {
   KNX_UM_WARNF("[KNX-UM][WARN] Invalid individual address '%s' -> using previous/not set\n", individualAddr);
@@ -1918,7 +1924,7 @@ void KnxIpUsermod::setup() {
 
   // Apply Communication Enhancement to the core
   KNX.setCommunicationEnhancement(commEnhance, commResends, commResendGapMs, commRxDedupMs);
-  Serial.printf("[KNX-UM] CommEnhance %s (resends=%u gapMs=%u dedupMs=%u)\n",
+  KNX_UM_DEBUGF("[KNX-UM] CommEnhance %s (resends=%u gapMs=%u dedupMs=%u)\n",
                 commEnhance?"ON":"OFF", commResends, commResendGapMs, commRxDedupMs);
 
   // Parse IN GA strings (always)
@@ -1936,7 +1942,7 @@ void KnxIpUsermod::setup() {
   if (!GA_IN_B     && *gaInB)      KNX_UM_WARNF("[KNX-UM][WARN] Invalid GA in b '%s'\n", gaInB);
   if (!GA_IN_FX    && *gaInFx)     KNX_UM_WARNF("[KNX-UM][WARN] Invalid GA in fx '%s'\n", gaInFx);
   if (!GA_IN_PRE   && *gaInPreset) KNX_UM_WARNF("[KNX-UM][WARN] Invalid GA in preset '%s'\n", gaInPreset);
-  Serial.printf("[KNX-UM] IN  pwr=0x%04X bri=0x%04X R=0x%04X G=0x%04X B=0x%04X fx=0x%04X pre=0x%04X\n",
+  KNX_UM_DEBUGF("[KNX-UM] IN  pwr=0x%04X bri=0x%04X R=0x%04X G=0x%04X B=0x%04X fx=0x%04X pre=0x%04X\n",
                 GA_IN_PWR, GA_IN_BRI, GA_IN_R, GA_IN_G, GA_IN_B, GA_IN_FX, GA_IN_PRE);
 
   GA_IN_RGB  = parseGA(gaInRGB);
@@ -1947,7 +1953,7 @@ void KnxIpUsermod::setup() {
   GA_IN_RGBW_REL = parseGA(gaInRGBWRel);
   
   // Debug: Log composite group addresses
-  Serial.printf("[KNX-UM] COMPOSITE: RGB=0x%04X HSV=0x%04X RGBW=0x%04X RGB_REL=0x%04X HSV_REL=0x%04X RGBW_REL=0x%04X\n",
+  KNX_UM_DEBUGF("[KNX-UM] COMPOSITE: RGB=0x%04X HSV=0x%04X RGBW=0x%04X RGB_REL=0x%04X HSV_REL=0x%04X RGBW_REL=0x%04X\n",
                 GA_IN_RGB, GA_IN_HSV, GA_IN_RGBW, GA_IN_RGB_REL, GA_IN_HSV_REL, GA_IN_RGBW_REL);
   GA_IN_H    = parseGA(gaInH);
   GA_IN_S    = parseGA(gaInS);
@@ -1973,7 +1979,7 @@ void KnxIpUsermod::setup() {
   bool allowW   = (g_ledProfile == LedProfile::RGBW || g_ledProfile == LedProfile::MONO);
   bool allowCCT = (g_ledProfile == LedProfile::CCT || g_ledProfile == LedProfile::RGBCCT);
   
-  Serial.printf("[KNX-UM] LED profile: %s (RGB=%d, W=%d, CCT=%d)\n",
+  KNX_UM_DEBUGF("[KNX-UM] LED profile: %s (RGB=%d, W=%d, CCT=%d)\n",
     (g_ledProfile==LedProfile::MONO?"MONO":
      g_ledProfile==LedProfile::CCT?"CCT":
      g_ledProfile==LedProfile::RGB?"RGB":
@@ -1981,18 +1987,18 @@ void KnxIpUsermod::setup() {
     (int)allowRGB,(int)allowW,(int)allowCCT);
 
   if (!allowRGB) { 
-    Serial.printf("[KNX-UM] DEBUG: allowRGB=false, disabling RGB group addresses\n");
+    KNX_UM_DEBUGF("[KNX-UM] DEBUG: allowRGB=false, disabling RGB group addresses\n");
     GA_IN_R = GA_IN_G = GA_IN_B = GA_IN_R_REL = GA_IN_G_REL = GA_IN_B_REL = GA_IN_RGB = 
                     GA_IN_HSV = GA_IN_H = GA_IN_S = GA_IN_V = GA_IN_H_REL = GA_IN_S_REL = GA_IN_V_REL = 
                     GA_IN_RGB_REL = GA_IN_HSV_REL = 0;  } else {
-    Serial.printf("[KNX-UM] DEBUG: allowRGB=true, RGB group addresses enabled\n");
+    KNX_UM_DEBUGF("[KNX-UM] DEBUG: allowRGB=true, RGB group addresses enabled\n");
   }
   if (!allowW)   { GA_IN_W = GA_IN_W_REL = 0; }
   if (!allowCCT) { GA_IN_CCT = GA_IN_WW = GA_IN_CW = GA_IN_WW_REL = GA_IN_CW_REL = 0; }
   if (!(g_ledProfile == LedProfile::RGBW || g_ledProfile == LedProfile::RGBCCT)) { GA_IN_RGBW = GA_IN_RGBW_REL = 0; }
 
   // Debug: Final values after allowRGB logic
-  Serial.printf("[KNX-UM] FINAL: RGB=0x%04X HSV=0x%04X RGBW=0x%04X\n", GA_IN_RGB, GA_IN_HSV, GA_IN_RGBW);
+  KNX_UM_DEBUGF("[KNX-UM] FINAL: RGB=0x%04X HSV=0x%04X RGBW=0x%04X\n", GA_IN_RGB, GA_IN_HSV, GA_IN_RGBW);
 
   // Optional additional inputs registered separately (will be skipped if masked above)
   GA_IN_W   = parseGA(gaInW);
@@ -2020,13 +2026,13 @@ void KnxIpUsermod::setup() {
   }
 
   if (GA_IN_RGB) {
-    Serial.printf("[KNX-UM] DEBUG: Registering RGB handler for GA 0x%04X\n", GA_IN_RGB);
+    KNX_UM_DEBUGF("[KNX-UM] DEBUG: Registering RGB handler for GA 0x%04X\n", GA_IN_RGB);
     registerMultiHandler(GA_IN_RGB, DptMain::DPT_232xx, 3, [this](const uint8_t* p){ 
-      Serial.printf("[KNX-UM] DEBUG: RGB callback triggered with data: %02X %02X %02X\n", p[0], p[1], p[2]);
+      KNX_UM_DEBUGF("[KNX-UM] DEBUG: RGB callback triggered with data: %02X %02X %02X\n", p[0], p[1], p[2]);
       onKnxRGB(p[0],p[1],p[2]); 
     });
   } else {
-    Serial.printf("[KNX-UM] DEBUG: GA_IN_RGB is 0, not registering RGB handler\n");
+    KNX_UM_DEBUGF("[KNX-UM] DEBUG: GA_IN_RGB is 0, not registering RGB handler\n");
   }
   if (GA_IN_HSV) {
     registerMultiHandler(GA_IN_HSV, DptMain::DPT_232xx, 3, [this](const uint8_t* p){
@@ -2113,7 +2119,7 @@ void KnxIpUsermod::setup() {
   GA_OUT_INT_TEMP_ALARM = parseGA(gaOutIntTempAlarm);
   GA_OUT_TEMP_ALARM     = parseGA(gaOutTempAlarm);
 
-  Serial.printf("[KNX-UM] OUT pwr=0x%04X bri=0x%04X R=0x%04X G=0x%04X B=0x%04X W=0x%04X CCT=0x%04X WW=0x%04X CW=0x%04X fx=0x%04X pre=0x%04X H=%04X S=%04X V=%04X\n",
+  KNX_UM_DEBUGF("[KNX-UM] OUT pwr=0x%04X bri=0x%04X R=0x%04X G=0x%04X B=0x%04X W=0x%04X CCT=0x%04X WW=0x%04X CW=0x%04X fx=0x%04X pre=0x%04X H=%04X S=%04X V=%04X\n",
                 GA_OUT_PWR, GA_OUT_BRI, GA_OUT_R, GA_OUT_G, GA_OUT_B, GA_OUT_W, GA_OUT_CCT, GA_OUT_WW, GA_OUT_CW, GA_OUT_FX, GA_OUT_PRE, GA_OUT_H, GA_OUT_S, GA_OUT_V);
 
   // --- Gate outputs by LED capability ---
@@ -2196,30 +2202,30 @@ void KnxIpUsermod::setup() {
   // Register per-segment KOs
   registerSegmentKOs();
 
-  Serial.printf("[KNX-UM] OUT intTemp=0x%04X temp=0x%04X\n", GA_OUT_INT_TEMP, GA_OUT_TEMP);
-  Serial.printf("[KNX-UM] OUT intTempAlarm=0x%04X tempAlarm=0x%04X (thr: %.1f/%.1f °C, hyst=%.1f)\n",
+  KNX_UM_DEBUGF("[KNX-UM] OUT intTemp=0x%04X temp=0x%04X\n", GA_OUT_INT_TEMP, GA_OUT_TEMP);
+  KNX_UM_DEBUGF("[KNX-UM] OUT intTempAlarm=0x%04X tempAlarm=0x%04X (thr: %.1f/%.1f °C, hyst=%.1f)\n",
   
     GA_OUT_INT_TEMP_ALARM, GA_OUT_TEMP_ALARM, intTempAlarmMaxC, dallasTempAlarmMaxC, tempAlarmHystC);
   // Start KNX
   IPAddress ip = Network.localIP();
   if (!ip || ip.toString() == String("0.0.0.0")) {
-    Serial.println("[KNX-UM] Network connected but no IP yet, deferring KNX.begin().");
+    KNX_UM_DEBUGLN("[KNX-UM] Network connected but no IP yet, deferring KNX.begin().");
     return;
   }
 
 #ifdef ARDUINO_ARCH_ESP32
   if (Network.isEthernet()) {
     // For Ethernet, we don't need to disable WiFi sleep
-    Serial.println("[KNX-UM] Using Ethernet connection");
+    KNX_UM_DEBUGLN("[KNX-UM] Using Ethernet connection");
   } else {
     WiFi.setSleep(false);     // modem-sleep off helps WiFi multicast reliability
-    Serial.println("[KNX-UM] Using WiFi connection, sleep disabled");
+    KNX_UM_DEBUGLN("[KNX-UM] Using WiFi connection, sleep disabled");
     
     delay(100);  // Give lwIP time to complete initialization
     
     // Verify WiFi is still connected after delay
     if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("[KNX-UM] WiFi disconnected during lwIP wait, deferring KNX.begin().");
+      KNX_UM_DEBUGLN("[KNX-UM] WiFi disconnected during lwIP wait, deferring KNX.begin().");
       return;
     }
   }
@@ -2229,7 +2235,7 @@ void KnxIpUsermod::setup() {
   yield();
   
   bool ok = KNX.begin();
-  Serial.printf("[KNX-UM] KNX.begin() -> %s (localIP=%s)\n", ok ? "OK" : "FAILED", ip.toString().c_str());
+  KNX_UM_DEBUGF("[KNX-UM] KNX.begin() -> %s (localIP=%s)\n", ok ? "OK" : "FAILED", ip.toString().c_str());
   
   // Send UDP debug for remote monitoring
   KNX_UDP_LOG("[KNX-UM] KNX usermod setup: begin() -> %s (localIP=%s)", ok ? "OK" : "FAILED", ip.toString().c_str());
@@ -2452,7 +2458,7 @@ void KnxIpUsermod::scheduleStatePublish() {
     g_lastScheduleW = curW;
     g_lastSchedulePreset = curPreset;
   } else {
-    //Serial.printf("[KNX-UM] No actual changes detected - skipping schedule\n");
+    //KNX_UM_DEBUGF("[KNX-UM] No actual changes detected - skipping schedule\n");
   }
 }
 
@@ -3012,7 +3018,7 @@ bool KnxIpUsermod::readFromConfig(JsonObject& root) {
   if (!enabled) {
     // GUI disabled → leave multicast + free socket if running
     if (KNX.running()) {
-      Serial.println("[KNX-UM] KNX disabled via GUI → shutting down.");
+      KNX_UM_DEBUGLN("[KNX-UM] KNX disabled via GUI → shutting down.");
       KNX.end();                                                   // leaves group and closes socket :contentReference[oaicite:1]{index=1}
     }
     return true;
@@ -3021,7 +3027,7 @@ bool KnxIpUsermod::readFromConfig(JsonObject& root) {
   // If PA string is valid, update it without forcing a rebuild
   if (uint16_t pa = parsePA(individualAddr)) {                     // :contentReference[oaicite:2]{index=2}
     KNX.setIndividualAddress(pa);
-    Serial.printf("[KNX-UM] PA set to %u.%u.%u (0x%04X)\n",
+    KNX_UM_DEBUGF("[KNX-UM] PA set to %u.%u.%u (0x%04X)\n",
                   (unsigned)((pa>>12)&0x0F), (unsigned)((pa>>8)&0x0F), (unsigned)(pa&0xFF), pa);
   } else {
   KNX_UM_WARNF("[KNX-UM][WARN] Invalid individual address '%s' (unchanged)\n", individualAddr);
@@ -3031,7 +3037,7 @@ bool KnxIpUsermod::readFromConfig(JsonObject& root) {
   const bool rebuildNeeded = anyGAChanged || !prevEnabled;
 
   if (rebuildNeeded) {
-    Serial.println("[KNX-UM] Rebuild KNX registrations & socket (GA map changed or first enable).");
+    KNX_UM_DEBUGLN("[KNX-UM] Rebuild KNX registrations & socket (GA map changed or first enable).");
     KNX.end();
     KNX.clearRegistrations();                                      // drop old GA registry
     setup();                                                       // re-register + begin() if Wi-Fi up :contentReference[oaicite:3]{index=3}
