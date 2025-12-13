@@ -82,7 +82,7 @@ enum class KnxService : uint8_t {
 enum class DptMain : uint16_t {
   DPT_1xx    = 1,    // 1 bit (on/off etc.)
   DPT_2xx    = 2,    // (unused here; 2-bit controlled)
-  DPT_3xx    = 3,    // (unused here; 4-bit dimming steps)
+  DPT_3xx    = 3,    // 4-bit dimming steps
   DPT_5xx    = 5,    // 8 bit unsigned (0..255 / scaling 0..100%)
   DPT_6xx    = 6,    // 8 bit signed (two's complement) - relative dim/color deltas
   DPT_7xx    = 7,    // 16 bit unsigned (e.g. Kelvin)

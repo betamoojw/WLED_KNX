@@ -935,18 +935,51 @@ void KnxIpUsermod::onKnxEffect(uint8_t fxIndex) {
 
 // ---------------- Relative handlers (DPT 3.007) -----------------
 static uint8_t knx_step_pct(uint8_t stepCode) {
+  uint8_t ret = 0;
   switch(stepCode) {
-    case 1: return 100; case 2: return 50; case 3: return 25; case 4: return 12; case 5: return 6; case 6: return 3; case 7: return 1; default: return 0; }
+    case 1: 
+      ret = 100; 
+    break;
+    case 2: 
+      ret = 50; 
+      break;
+    case 3: 
+      ret = 25; 
+      break;
+    case 4: 
+      ret = 12; 
+      break;
+    case 5: 
+      ret = 6; 
+      break;
+    case 6: 
+      ret = 3; 
+      break;
+    case 7: 
+      ret = 1; 
+      break;
+    default: 
+      ret = 0; 
+      break;
+  }
+  return ret;
 }
 
 static int16_t knx_step_delta(uint8_t nibble, uint16_t maxVal) {
-  if (nibble == 0) return 0; // stop
-  bool inc = (nibble & 0x8) != 0; // bit3
+  if (nibble == 0) return 0; // StepCode == 0 → Break / Stop
+
+  bool inc = ((nibble >> 3) & 0x01) == 1; // bit3 = direction
   uint8_t sc = nibble & 0x7;
   uint8_t pct = knx_step_pct(sc);
-  uint16_t mag = (uint32_t)maxVal * pct / 100U;
+  KNX_UM_DEBUGF("[KNX-UM][knx_step_delta] raw:0x%02X ,dir:%d stepCode:%d pct:%d \n", nibble, ((nibble >> 3) & 0x01), sc, pct);
+
+  // use rounding instead of floor
+  uint16_t mag = (uint32_t)maxVal * pct;
+  mag = (mag + 50u) / 100u;
   if (mag == 0) mag = 1;
-  return inc ? (int16_t)mag : -(int16_t)mag;
+  int16_t ret = inc ? (int16_t)mag : -(int16_t)mag;
+  KNX_UM_DEBUGF("[KNX-UM][knx_step_delta] dir:%s val:%d\n", inc ? "+" : "-", ret);
+  return ret;
 }
 
 #ifdef UNIT_TEST
@@ -2112,7 +2145,21 @@ void KnxIpUsermod::setup() {
   if (GA_IN_V) {
     register1ByteHandler(GA_IN_V, DptMain::DPT_5xx, [this](uint8_t v){ onKnxV(byteToPct01(v)); });
   }
-  if (GA_IN_BRI_REL) { KNX.addGroupObject(GA_IN_BRI_REL, DptMain::DPT_3xx, false, true); KNX.onGroup(GA_IN_BRI_REL, [this](uint16_t, DptMain, KnxService s, const uint8_t* p, uint8_t l){ if (s==KnxService::GroupValue_Write && l>=1) onKnxBrightnessRel(p[0]); }); }
+  if (GA_IN_BRI_REL) { 
+    KNX.addGroupObject(GA_IN_BRI_REL, DptMain::DPT_3xx, false, true); 
+    KNX.onGroup(GA_IN_BRI_REL, [this](uint16_t, DptMain, KnxService s, const uint8_t* p, uint8_t l){ 
+#ifdef KNX_UM_DEBUG
+      Serial.print("[KNX-UM] KNX payload: ");
+      for (uint8_t i = 0; i < l; ++i) {
+          if (p[i] < 0x10) Serial.print("0");
+          Serial.print(p[i], HEX);
+          Serial.print(" ");
+      }
+      Serial.println();
+#endif
+      if (s==KnxService::GroupValue_Write && l>=1) onKnxBrightnessRel(p[0]); 
+    }); 
+  }
   if (GA_IN_R_REL)   { KNX.addGroupObject(GA_IN_R_REL,   DptMain::DPT_3xx, false, true); KNX.onGroup(GA_IN_R_REL,   [this](uint16_t, DptMain, KnxService s, const uint8_t* p, uint8_t l){ if (s==KnxService::GroupValue_Write && l>=1) onKnxColorRel(0,p[0]); }); }
   if (GA_IN_G_REL)   { KNX.addGroupObject(GA_IN_G_REL,   DptMain::DPT_3xx, false, true); KNX.onGroup(GA_IN_G_REL,   [this](uint16_t, DptMain, KnxService s, const uint8_t* p, uint8_t l){ if (s==KnxService::GroupValue_Write && l>=1) onKnxColorRel(1,p[0]); }); }
   if (GA_IN_B_REL)   { KNX.addGroupObject(GA_IN_B_REL,   DptMain::DPT_3xx, false, true); KNX.onGroup(GA_IN_B_REL,   [this](uint16_t, DptMain, KnxService s, const uint8_t* p, uint8_t l){ if (s==KnxService::GroupValue_Write && l>=1) onKnxColorRel(2,p[0]); }); }

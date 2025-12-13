@@ -546,7 +546,7 @@ void KnxIpCore::_handleIncoming(const uint8_t* buf, int len) {
 
   if (svcDetected == KnxService::GroupValue_Write && apduBytes == 2) {
     static uint8_t one;
-    one = (tpdu[1] & 0x01);
+    one = (tpdu[1] & 0x0F);  // allow for DPT_1xx, DPT_2xx and DPT_3xx
     asdu = &one; asduLen = 1;
   } else if (apduBytes > 2) {
     asdu = tpdu + 2; asduLen = uint8_t(apduBytes - 2);
