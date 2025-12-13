@@ -1710,7 +1710,7 @@ void KnxIpUsermod::onKnxDateTime_19_001(const uint8_t* p, uint8_t len) {
     return;
   }
 
-  int year = (year8 < 100) ? (2000 + year8) : year8;
+  int year = year8 + 1900;  // offset 1900
   const int hour   = hourB & 0x1F;   // 0..23
   const int minute = minB  & 0x3F;   // 0..59
   const int second = secB  & 0x3F;   // 0..59
