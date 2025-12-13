@@ -1286,7 +1286,6 @@ function updateUI()
 	gId('buttonPower').className = (isOn) ? 'active':'';
 	gId('buttonNl').className = (nlA) ? 'active':'';
 	gId('buttonSync').className = (syncSend) ? 'active':'';
-	gId('pxmb').style.display = (isM) ? "inline-block" : "none";
 
 	updateSelectedFx();
 	updateSelectedPalette(selectedPal); // must be after updateSelectedFx() to un-hide color slots for * palettes
@@ -3477,7 +3476,8 @@ function reportUpgradeEvent(info, oldVersion) {
 			};
 
 			// Add optional fields if available
-			if (infoData.psram !== undefined) upgradeData.psramSize = Math.round(infoData.psram / (1024 * 1024));  // convert bytes to MB
+			if (infoData.psramPresent !== undefined) upgradeData.psramPresent = infoData.psramPresent;  // Whether device has PSRAM
+			if (infoData.psramSize !== undefined) upgradeData.psramSize = infoData.psramSize;  // Total PSRAM size in MB
 			// Note: partitionSizes not currently available in /json/info endpoint
 
 			// Make AJAX call to postUpgradeEvent API
