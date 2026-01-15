@@ -67,6 +67,8 @@ private:
   void publishMqtt(const char *state, bool retain = false); // example for publishing MQTT message
 };
 
+static void getCurrentRGBW(uint8_t &r, uint8_t &g, uint8_t &b, uint8_t &w);
+
 WebSocketMCP mcpClient;
 void onConnectionStatus(bool connected);
 void registerMcpTools();
