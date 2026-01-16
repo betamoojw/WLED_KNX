@@ -1,4 +1,3 @@
-
 #include "WebSocketMCP.h"
 
 // 静态实例指针初始化
@@ -68,7 +67,7 @@ bool WebSocketMCP::begin(const char *mcpEndpoint,  ConnectionCallback connCb) {
   // 注册事件回调
   webSocket.onEvent(webSocketEvent);
   
-  Serial.println("[xiaozhi-mcp] 正在连接WebSocket服务器: " + url);
+  Serial.println("[xiaozhi-mcp] Connecting to WebSocket server: " + url);
   return true;
 }
 
@@ -82,7 +81,7 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
     case WStype_DISCONNECTED:
       if (instance->connected) {
         instance->connected = false;
-        Serial.println("[xiaozhi-mcp] WebSocket连接已断开");
+        Serial.println("[xiaozhi-mcp] WebSocket disconnected");
         if (instance->connectionCallback) {
           instance->connectionCallback(false);
         }
@@ -93,7 +92,7 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
       {
         instance->connected = true;
         instance->resetReconnectParams();
-        Serial.println("[xiaozhi-mcp] WebSocket已连接");
+        Serial.println("[xiaozhi-mcp] WebSocket connected");
         if (instance->connectionCallback) {
           instance->connectionCallback(true);
         }
@@ -109,7 +108,7 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
       break;
       
     case WStype_BIN:
-      Serial.println("[xiaozhi-mcp] 收到二进制数据，长度: " + String(length));
+      Serial.println("[xiaozhi-mcp] Received binary data, length: " + String(length));
       break;
       
     case WStype_ERROR:
@@ -123,11 +122,11 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
 
 bool WebSocketMCP::sendMessage(const String &message) {
   if (!connected) {
-    Serial.println("[xiaozhi-mcp] 未连接到WebSocket服务器，无法发送消息");
+    Serial.println("[xiaozhi-mcp] Not connected to WebSocket server, cannot send message");
     return false;
   }
   // 发送文本消息到WebSocket服务器(相当于stdin)
-  Serial.println("[xiaozhi-mcp] 发送消息: " + message);
+  Serial.println("[xiaozhi-mcp] Sending message: " + message);
   String msg = message;
   webSocket.sendTXT(msg);
   return true;
@@ -147,7 +146,7 @@ void WebSocketMCP::loop() {
     unsigned long now = millis();
     // 如果超过2分钟没收到ping，可能连接已经断开
     if (now - lastPingTime > 120000) {
-      Serial.println("[xiaozhi-mcp] Ping超时，重置连接");
+      Serial.println("[xiaozhi-mcp] Ping timeout, resetting connection");
       disconnect();
     }
   }
@@ -175,8 +174,8 @@ void WebSocketMCP::handleReconnect() {
     // 计算下一次重连的等待时间(指数退避)
     currentBackoff = min(currentBackoff * 2, MAX_BACKOFF);
     
-    Serial.println("[xiaozhi-mcp] 正在尝试重新连接(尝试次数: " + String(reconnectAttempt) + 
-        ", 下次等待时间: " + String(currentBackoff / 1000.0, 2) + "秒");
+    Serial.println("[xiaozhi-mcp] Attempting reconnect (attempt: " + String(reconnectAttempt) + 
+        ", next wait: " + String(currentBackoff / 1000.0, 2) + "s)");
   }
 }
 
@@ -192,7 +191,7 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
   DeserializationError error = deserializeJson(doc, message);
   
   if (error) {
-    Serial.println("[xiaozhi-mcp] 解析JSON失败: " + String(error.c_str()));
+    Serial.println("[xiaozhi-mcp] Failed to parse JSON: " + String(error.c_str()));
     return;
   }
   
@@ -203,12 +202,12 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
     
     // 构造pong响应 - 使用原始id进行回应，不做修改
     String id = doc["id"].as<String>();
-    Serial.println("[xiaozhi-mcp] 收到ping请求: " + id);
+    Serial.println("[xiaozhi-mcp] Received ping request: " + id);
 
     String response = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{}}";
     sendMessage(response);
 
-    Serial.println("[xiaozhi-mcp] 响应ping请求: " + id);
+    Serial.println("[xiaozhi-mcp] Responded to ping request: " + id);
   }
   // 处理初始化请求
   else if (doc.containsKey("method") && doc["method"] == "initialize") {
@@ -221,7 +220,7 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
       ",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"experimental\":{},\"prompts\":{\"listChanged\":false},\"resources\":{\"subscribe\":false,\"listChanged\":false},\"tools\":{\"listChanged\":false}},\"serverInfo\":{\"name\":\"" + serverName + "\",\"version\":\"1.0.0\"}}}";
     
     sendMessage(response);
-    Serial.println("[xiaozhi-mcp] 响应initialize请求");
+    Serial.println("[xiaozhi-mcp] Responded to initialize request");
     
     // 发送initialized通知
     sendMessage("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
@@ -249,7 +248,7 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
     response += "]}}";
     
     sendMessage(response);
-    Serial.println("[xiaozhi-mcp] 响应tools/list请求，共" + String(_tools.size()) + "个工具");
+    Serial.println("[xiaozhi-mcp] Responded to tools/list request, total tools: " + String(_tools.size()));
   }
   // 处理tools/call请求
   else if (doc.containsKey("method") && doc["method"] == "tools/call") {
@@ -257,7 +256,7 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
     String toolName = doc["params"]["name"].as<String>();
     JsonObject arguments = doc["params"]["arguments"].as<JsonObject>();
     
-    Serial.println("[xiaozhi-mcp] 收到工具调用请求: " + toolName);
+    Serial.println("[xiaozhi-mcp] Received tool call request: " + toolName);
     
     // 查找工具
     bool toolFound = false;
@@ -304,7 +303,7 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
     serializeJson(responseDoc, response);
     
     sendMessage(response);
-    Serial.println("[xiaozhi-mcp] 工具调用完成: " + toolName + (toolResponse.isError ? " (出错)" : ""));
+    Serial.println("[xiaozhi-mcp] Tool call completed: " + toolName + (toolResponse.isError ? " (error)" : ""));
   }
 }
 
@@ -339,7 +338,7 @@ bool WebSocketMCP::registerTool(const String &name, const String &description,
     if (_tools[i].name == name) {
       // 如果工具存在，可以选择更新回调
       _tools[i].callback = callback;
-      Serial.println("[xiaozhi-mcp] 更新工具回调: " + name);
+      Serial.println("[xiaozhi-mcp] Updated tool callback: " + name);
       return true;
     }
   }
@@ -352,7 +351,7 @@ bool WebSocketMCP::registerTool(const String &name, const String &description,
   newTool.callback = callback;
   
   _tools.push_back(newTool);
-  Serial.println("[xiaozhi-mcp] 成功注册工具: " + name);
+  Serial.println("[xiaozhi-mcp] Successfully registered tool: " + name);
   return true;
 }
 
@@ -374,11 +373,11 @@ bool WebSocketMCP::unregisterTool(const String &name) {
   for (size_t i = 0; i < _tools.size(); i++) {
     if (_tools[i].name == name) {
       _tools.erase(_tools.begin() + i);
-      Serial.println("[xiaozhi-mcp] 已卸载工具: " + name);
+      Serial.println("[xiaozhi-mcp] Unregistered tool: " + name);
       return true;
     }
   }
-  Serial.println("[xiaozhi-mcp] 工具 " + name + " 不存在，无法卸载");
+  Serial.println("[xiaozhi-mcp] Tool " + name + " does not exist, cannot unregister");
   return false;
 }
 
@@ -390,7 +389,7 @@ size_t WebSocketMCP::getToolCount() {
 // 清空所有工具
 void WebSocketMCP::clearTools() {
   _tools.clear();
-  Serial.println("[WebSocketMCP] 已清空所有工具");
+  Serial.println("[WebSocketMCP] Cleared all tools");
 }
 
 // 格式化JSON字符串，每个键值对占一行

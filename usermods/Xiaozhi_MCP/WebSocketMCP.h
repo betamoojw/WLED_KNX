@@ -1,5 +1,3 @@
-
-
 #ifndef WEBSOCKET_MCP_H
 #define WEBSOCKET_MCP_H
 
