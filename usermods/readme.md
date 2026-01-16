@@ -19,3 +19,10 @@ For new usermods, I would recommend trying out the new v2 usermod API, which all
 You can take a look at `EXAMPLE_v2` for some documentation and at `Temperature` for a completed v2 usermod!
 
 Thank you for your help :)
+
+# Note
+
+This user mode leverages the xiaozhi-esp32-mcp as backend service to establish the connection/bidirectional communication to xiaozhi.me with the following adjustments:
+
+* Use the xiaozhi_mcp-1.0.0.zip fetched from the https://www.arduinolibraries.info/libraries/xiaozhi-mcp and only keep the WebSocketMCP.h and WebSocketMCP.cpp files at minimal for Xiaozhi_MCP user mode.
+* Use the wled.h header instead of the ones in the original header list (the wled project has built-in ArduinoJson.h).

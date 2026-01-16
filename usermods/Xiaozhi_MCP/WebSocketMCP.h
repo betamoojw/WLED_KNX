@@ -3,12 +3,8 @@
 #ifndef WEBSOCKET_MCP_H
 #define WEBSOCKET_MCP_H
 
-#include <Arduino.h>
-#include <WiFi.h>
+#include "wled.h"
 #include <WebSocketsClient.h>
-// #include <ArduinoJson.h>  // 需要添加这个库来解析JSON
-#include "src/dependencies/json/ArduinoJson-v6.h"
-#include <vector>
 #include <functional>
 
 /**
