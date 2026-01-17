@@ -45,17 +45,15 @@ public:
 private:
   // --- Config values (editable via JSON/UI) ---
   bool isEnabled = false;
-  unsigned long connRetryInterval = 5000;
+  String mcpTerminalAlias = "LED";
   String mcpEndpoint = "wss://api.xiaozhi.me/mcp/?token=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjExODk4NCwiYWdlbnRJZCI6MTA5MDAsImVuZHBvaW50SWQiOiJhZ2VudF8xMDkwMCIsInB1cnBvc2UiOiJtY3AtZW5kcG9pbnQiLCJpYXQiOjE3NjgzMTM2NDMsImV4cCI6MTc5OTg3MTI0M30.Rf1Wg030527sX6DGzDzVdP52cOjYOMN67QN1iKU5fAaT3DTbAv3idzxDhn1IV5ecN45HxaXM1JdMDxZc4elkKA"; // Adjust as needed
 
   bool isSetupDone = false;
-  static constexpr unsigned long minLoopInterval = 1000; // minimum allowable interval (ms)
   unsigned long lastTime = 0;
-  float temperature = 0.0f;
 
   static const char _name[];
   static const char _enabled[];
-  static const char _connectionRetryInterval[];
+  static const char _mcpTerminalAlias[];
   static const char _mcpEndpoint[];
 
   const int TIMEOUT_60_SECONDS = 60;

@@ -1,4 +1,3 @@
-
 #include "Xiaozhi_MCP.h"
 #include "src/dependencies/network/Network.h"
 
@@ -88,18 +87,12 @@ void Xiaozhi_MCP::loop()
     }
   }
 
-// Measure the temperature
-#ifdef defined(CONFIG_IDF_TARGET_ESP32S2) // ESP32S2
-  temperature = -1;
-#else // ESP32 ESP32S3 and ESP32C3
-  temperature = roundf(temperatureRead() * 10) / 10;
-#endif
 
 #ifndef WLED_DISABLE_MQTT
   if (WLED_MQTT_CONNECTED)
   {
     char array[10];
-    snprintf(array, sizeof(array), "%f", temperature);
+    snprintf(array, sizeof(array), "%s", mcpTerminalAlias.c_str());
     publishMqtt(array);
   }
 #endif
@@ -111,45 +104,49 @@ void Xiaozhi_MCP::addToJsonInfo(JsonObject &root)
 {
   if (!isEnabled)
   {
+    MCP_UM_DEBUGF("[MCP-UM] addToJsonInfo called but usermod disabled\n");
     return;
   }
+
+  MCP_UM_DEBUGF("[MCP-UM] addToJsonInfo called - adding usermod info to JSON\n");
 
   // if "u" object does not exist yet we need to create it
   JsonObject user = root["u"];
   if (user.isNull())
+  {
     user = root.createNestedObject("u");
+  }
 
-  JsonArray userTempArr = user.createNestedArray(FPSTR(_name));
-  userTempArr.add(temperature);
-  userTempArr.add(F(" °C"));
+  // Check MCP service status
+  JsonArray mcpStatus = user.createNestedArray("MCP Service Status");
+  if (mcpClient.isConnected())
+  {
+    mcpStatus.add(F("connected"));
+    MCP_UM_DEBUGLN("[MCP-UM] MCP service is connected");
+  }
+  else
+  {
+    mcpStatus.add(F("disconnected"));
+    MCP_UM_DEBUGLN("[MCP-UM] MCP service is not connected");
+  }
 
-  // if "sensor" object does not exist yet wee need to create it
-  JsonObject sensor = root[F("sensor")];
-  if (sensor.isNull())
-    sensor = root.createNestedObject(F("sensor"));
-
-  JsonArray sensorTempArr = sensor.createNestedArray(FPSTR(_name));
-  sensorTempArr.add(temperature);
-  sensorTempArr.add(F("°C"));
+  // Check MCP terminal alias status
+  JsonArray mcpTerminalAlias = user.createNestedArray("MCP Terminal Alias");
+  mcpTerminalAlias.add(F(mcpTerminalAlias.c_str()));
 }
 
 void Xiaozhi_MCP::addToConfig(JsonObject &root)
 {
   JsonObject top = root.createNestedObject(FPSTR(_name));
   top[FPSTR(_enabled)] = isEnabled;
-  top[FPSTR(_connectionRetryInterval)] = connRetryInterval;
+  top[FPSTR(_mcpTerminalAlias)] = mcpTerminalAlias;
   top[FPSTR(_mcpEndpoint)] = mcpEndpoint;
 }
 
 // Append useful info to the usermod settings gui
 void Xiaozhi_MCP::appendConfigData()
 {
-  // Display 'ms' next to the 'Loop Interval' setting
-  oappend(F("addInfo('Temperature:Loop Interval', 1, 'ms');"));
-  // Display '°C' next to the 'Activation Threshold' setting
-  oappend(F("addInfo('Temperature:Activation Threshold', 1, '°C');"));
-  // Display '0 = Disabled' next to the 'Preset To Activate' setting
-  oappend(F("addInfo('Temperature:Preset To Activate', 1, '0 = unused');"));
+  // No additional info needed currently
 }
 
 bool Xiaozhi_MCP::readFromConfig(JsonObject &root)
@@ -157,8 +154,7 @@ bool Xiaozhi_MCP::readFromConfig(JsonObject &root)
   JsonObject top = root[FPSTR(_name)];
   bool configComplete = !top.isNull();
   configComplete &= getJsonValue(top[FPSTR(_enabled)], isEnabled);
-  configComplete &= getJsonValue(top[FPSTR(_connectionRetryInterval)], connRetryInterval);
-  connRetryInterval = max(connRetryInterval, minLoopInterval); // Makes sure the loop interval isn't too small.
+  configComplete &= getJsonValue(top[FPSTR(_mcpTerminalAlias)], mcpTerminalAlias);
   configComplete &= getJsonValue(top[FPSTR(_mcpEndpoint)], mcpEndpoint);
   return configComplete;
 }
@@ -322,7 +318,7 @@ void registerMcpTools()
 
 const char Xiaozhi_MCP::_name[] PROGMEM = "Xiaozhi_MCP";
 const char Xiaozhi_MCP::_enabled[] PROGMEM = "Enabled";
-const char Xiaozhi_MCP::_connectionRetryInterval[] PROGMEM = "Connection Retry Interval";
+const char Xiaozhi_MCP::_mcpTerminalAlias[] PROGMEM = "Terminal Alias";
 const char Xiaozhi_MCP::_mcpEndpoint[] PROGMEM = "MCP Endpoint";
 
 static Xiaozhi_MCP xiaozhi_mcp;
