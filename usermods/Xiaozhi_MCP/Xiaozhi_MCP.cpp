@@ -1,6 +1,29 @@
 #include "Xiaozhi_MCP.h"
 #include "src/dependencies/network/Network.h"
 
+/****************************************************************************************************/
+static WebSocketMCP mcpClient; // MCP client instance
+static String terminalAlias; // declare only; initialize in setup()
+
+// MCP callback functions
+static void onConnectionStatus(bool connected);
+
+// MCP tool registration entry point
+static void registerMcpTools(const String &alias);
+
+// Tool registration functions
+static void registerGetStatusTool(const String &alias);
+static void registerGetMcpAliasTool(const String &alias);
+static void registerPowerCtrlTool(const String &alias);
+static void registerBrightnessCtrlTool(const String &alias);
+static void registerColorCtrlTool(const String &alias);
+static void registerEffectCtrlTool(const String &alias);
+
+// Utility functions
+static void getCurrentRGBW(uint8_t &r, uint8_t &g, uint8_t &b, uint8_t &w);
+
+/****************************************************************************************************/
+
 void Xiaozhi_MCP::setup()
 {
   if (!isEnabled)
@@ -191,6 +214,8 @@ void Xiaozhi_MCP::publishMqtt(const char *state, bool retain)
 #endif
 }
 
+/****************************************************************************************************/
+
 static void getCurrentRGBW(uint8_t &r, uint8_t &g, uint8_t &b, uint8_t &w)
 {
   uint32_t c = SEGCOLOR(0); // primary color slot
@@ -214,19 +239,18 @@ void onConnectionStatus(bool connected)
   }
 }
 
-void registerMcpTools(const String &alias)
-{
-  String description = "";
+// (place these new helper functions near the existing registerMcpTools implementation)
 
-  // Register WLED status tool
-  description = alias + " 状态";
+static void registerGetStatusTool(const String &alias)
+{
+  String description = alias + " 状态";
   mcpClient.registerTool(
       "led_status",
       description,
       "{\"type\":\"object\",\"properties\":{},\"required\":[]}",
       [](const String &args)
       {
-        // Build a small JSON object describing current WLED status
+        // Build a small JSON object describing current status
         DynamicJsonDocument respDoc(256);
         uint8_t r, g, b, w;
         getCurrentRGBW(r, g, b, w);
@@ -236,16 +260,14 @@ void registerMcpTools(const String &alias)
         // map 0..255 -> 0..100 (rounded)
         uint8_t briPct = (uint8_t)(((uint32_t)bri255 * 100 + 127) / 255);
 
-        int effectIndex = strip.getMainSegment().mode;
-        // total number of available effects
-        int effectCount = strip.getModeCount();
-
         respDoc["on"] = on;
         respDoc["brightness255"] = bri255;
         respDoc["brightness"] = briPct;
+
+        int effectIndex = strip.getMainSegment().mode;
+        int effectCount = strip.getModeCount();
         respDoc["effect"] = effectIndex;
         respDoc["effectCount"] = effectCount;
-        // include human-readable effect name for current effect index
         const char *effectName = strip.getEffectName(effectIndex);
         respDoc["effectName"] = effectName ? effectName : "Unknown";
 
@@ -259,9 +281,11 @@ void registerMcpTools(const String &alias)
         serializeJson(respDoc, resp);
         return WebSocketMCP::ToolResponse(resp);
       });
+}
 
-  // Register tool to GET the terminal alias
-  description = alias + " 获取别名";
+static void registerGetMcpAliasTool(const String &alias)
+{
+  String description = alias + " 获取别名";
   mcpClient.registerTool(
       "led_get_alias",
       description,
@@ -275,9 +299,11 @@ void registerMcpTools(const String &alias)
         serializeJson(respDoc, resp);
         return WebSocketMCP::ToolResponse(resp);
       });
+}
 
-  // Register WLED on/off control tool
-  description = alias + " 开关";
+static void registerPowerCtrlTool(const String &alias)
+{
+  String description = alias + " 开关";
   mcpClient.registerTool(
       "led_on_off",
       description,
@@ -304,9 +330,11 @@ void registerMcpTools(const String &alias)
 
         return WebSocketMCP::ToolResponse("{\"success\":true,\"state\":\"" + state + "\"}");
       });
+}
 
-  // Register WLED brightness control tool
-  description = alias + " 亮度";
+static void registerBrightnessCtrlTool(const String &alias)
+{
+  String description = alias + " 亮度";
   mcpClient.registerTool(
       "led_brightness",
       description,
@@ -320,8 +348,10 @@ void registerMcpTools(const String &alias)
         {
           return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid brightness\"}");
         }
+
         // map 0..100 -> 0..255 with rounding
         bri = (uint8_t)(((uint32_t)brightness * 255 + 50) / 100);
+
         // update last-brightness if turning from zero to non-zero
         if (bri != strip.getBrightness())
         {
@@ -331,9 +361,11 @@ void registerMcpTools(const String &alias)
 
         return WebSocketMCP::ToolResponse("{\"success\":true,\"brightness\":" + String(brightness) + "}");
       });
+}
 
-  // Register WLED RGB color control tool
-  description = alias + " 颜色";
+static void registerColorCtrlTool(const String &alias)
+{
+  String description = alias + " 颜色";
   mcpClient.registerTool(
       "led_color",
       description,
@@ -349,7 +381,6 @@ void registerMcpTools(const String &alias)
         {
           return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid color values\"}");
         }
-        // Use uint8_t for r,g,b as requested
         uint8_t r = (uint8_t)tr;
         uint8_t g = (uint8_t)tg;
         uint8_t b = (uint8_t)tb;
@@ -360,10 +391,10 @@ void registerMcpTools(const String &alias)
         MCP_UM_DEBUGF("[MCP-UM] Current WLED state: bri=%d, on=%d\n", bri, (bri > 0));
 
         // Check if brightness is zero
-        uint8_t bri = strip.getBrightness();
-        if (bri == 0)
+        uint8_t currBri = strip.getBrightness();
+        if (currBri == 0)
         {
-          bri = (briLast > 0) ? briLast : 128;
+          currBri = (briLast > 0) ? briLast : 128;
         }
 
         // Set the color on the segment
@@ -381,9 +412,11 @@ void registerMcpTools(const String &alias)
 
         return WebSocketMCP::ToolResponse("{\"success\":true,\"color\":{\"r\":" + String(r) + ",\"g\":" + String(g) + ",\"b\":" + String(b) + "}}");
       });
+}
 
-  // Register WLED effect control tool (supports integer set, "current", "next", "prev")
-  description = alias + " 动画特效";
+static void registerEffectCtrlTool(const String &alias)
+{
+  String description = alias + " 动画特效";
   mcpClient.registerTool(
       "led_effect",
       description,
@@ -398,34 +431,48 @@ void registerMcpTools(const String &alias)
         int newEffect = currEffect;
         const unsigned modeCount = strip.getModeCount();
 
-        if (v.is<int>()) {
+        if (v.is<int>())
+        {
           newEffect = v.as<int>();
-          if (newEffect < 0 || (unsigned)newEffect >= modeCount) {
+          if (newEffect < 0 || (unsigned)newEffect >= modeCount)
+          {
             return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid effect index\"}");
           }
-        } else {
+        }
+        else
+        {
           String cmd = v.as<String>();
-          if (cmd == "current") {
+          if (cmd == "current")
+          {
             DynamicJsonDocument respDoc(256);
             respDoc["success"] = true;
             respDoc["effect"] = currEffect;
             respDoc["effectName"] = String(strip.getEffectName(currEffect));
-            String resp; serializeJson(respDoc, resp);
+            String resp;
+            serializeJson(respDoc, resp);
             return WebSocketMCP::ToolResponse(resp);
-          } else if (cmd == "next") {
+          }
+          else if (cmd == "next")
+          {
             newEffect = (currEffect + 1) % modeCount;
-          } else if (cmd == "prev" || cmd == "previous") {
+          }
+          else if (cmd == "prev" || cmd == "previous")
+          {
             newEffect = (currEffect + modeCount - 1) % modeCount;
-          } else {
+          }
+          else
+          {
             return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid command\"}");
           }
         }
 
         // ensure brightness non-zero before applying effect change
         uint8_t currBri = strip.getBrightness();
-        if (currBri == 0) currBri = (briLast > 0) ? briLast : 128;
+        if (currBri == 0)
+        {
+          currBri = (briLast > 0) ? briLast : 128;
+        }
 
-        // Apply new effect and notify
         strip.getMainSegment().setMode((uint8_t)newEffect);
         stateUpdated(CALL_MODE_DIRECT_CHANGE);
 
@@ -433,9 +480,21 @@ void registerMcpTools(const String &alias)
         respDoc["success"] = true;
         respDoc["effect"] = newEffect;
         respDoc["effectName"] = String(strip.getEffectName(newEffect));
-        String resp; serializeJson(respDoc, resp);
+        String resp;
+        serializeJson(respDoc, resp);
         return WebSocketMCP::ToolResponse(resp);
       });
+}
+
+// Replace original registerMcpTools body with simple calls to the extracted helpers
+void registerMcpTools(const String &alias)
+{
+  registerGetStatusTool(alias);
+  registerGetMcpAliasTool(alias);
+  registerPowerCtrlTool(alias);
+  registerBrightnessCtrlTool(alias);
+  registerColorCtrlTool(alias);
+  registerEffectCtrlTool(alias);
 
   Serial.println("[MCP] LED control tool registered");
 }

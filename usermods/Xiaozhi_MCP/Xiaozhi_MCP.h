@@ -67,11 +67,3 @@ private:
   bool checkMcpConfig();
   void publishMqtt(const char *state, bool retain = false); // example for publishing MQTT message
 };
-
-
-WebSocketMCP mcpClient;
-static String terminalAlias; // declare only; initialize in setup()
-
-static void getCurrentRGBW(uint8_t &r, uint8_t &g, uint8_t &b, uint8_t &w);
-void onConnectionStatus(bool connected);
-void registerMcpTools(const String &alias);
