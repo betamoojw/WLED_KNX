@@ -978,6 +978,11 @@ class WS2812FX {
     inline Segment& getMainSegment()      { return _segments[getMainSegmentId()]; }       // returns reference to main segment
     inline Segment* getSegments()         { return &(_segments[0]); }                     // returns pointer to segment vector structure (warning: use carefully)
 
+    // Return a short, human readable effect name for given effect id.
+    // This extracts the leading name portion from the stored mode data string
+    // (mode data contains the effect name plus optional UI metadata).
+    // Returns pointer to an internal static buffer (overwritten on subsequent calls).
+    const char* getEffectName(unsigned id) const;
   // 2D support (panels)
 
 #ifndef WLED_DISABLE_2D

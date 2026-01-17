@@ -237,11 +237,17 @@ void registerMcpTools(const String &alias)
         uint8_t briPct = (uint8_t)(((uint32_t)bri255 * 100 + 127) / 255);
 
         int effectIndex = strip.getMainSegment().mode;
+        // total number of available effects
+        int effectCount = strip.getModeCount();
 
         respDoc["on"] = on;
         respDoc["brightness255"] = bri255;
         respDoc["brightness"] = briPct;
         respDoc["effect"] = effectIndex;
+        respDoc["effectCount"] = effectCount;
+        // include human-readable effect name for current effect index
+        const char *effectName = strip.getEffectName(effectIndex);
+        respDoc["effectName"] = effectName ? effectName : "Unknown";
 
         JsonObject color = respDoc.createNestedObject("color");
         color["r"] = r;
@@ -376,33 +382,59 @@ void registerMcpTools(const String &alias)
         return WebSocketMCP::ToolResponse("{\"success\":true,\"color\":{\"r\":" + String(r) + ",\"g\":" + String(g) + ",\"b\":" + String(b) + "}}");
       });
 
-  // Register WLED effect control tool
-  description = alias + " 效果 (0-128)";
+  // Register WLED effect control tool (supports integer set, "current", "next", "prev")
+  description = alias + " 动画特效";
   mcpClient.registerTool(
       "led_effect",
       description,
-      "{\"type\":\"object\",\"properties\":{\"effect\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":128}},\"required\":[\"effect\"]}",
+      "{\"type\":\"object\",\"properties\":{\"effect\":{\"anyOf\":[{\"type\":\"integer\",\"minimum\":0,\"maximum\":255},{\"type\":\"string\",\"enum\":[\"current\",\"next\",\"prev\",\"previous\"]}]}},\"required\":[\"effect\"]}",
       [](const String &args)
       {
         DynamicJsonDocument doc(256);
         deserializeJson(doc, args);
-        int effectIndex = doc["effect"] | -1;
-        if (effectIndex < 0 || effectIndex > 128)
-        {
-          return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid effect index\"}");
+        JsonVariant v = doc["effect"];
+
+        int currEffect = strip.getMainSegment().mode;
+        int newEffect = currEffect;
+        const unsigned modeCount = strip.getModeCount();
+
+        if (v.is<int>()) {
+          newEffect = v.as<int>();
+          if (newEffect < 0 || (unsigned)newEffect >= modeCount) {
+            return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid effect index\"}");
+          }
+        } else {
+          String cmd = v.as<String>();
+          if (cmd == "current") {
+            DynamicJsonDocument respDoc(256);
+            respDoc["success"] = true;
+            respDoc["effect"] = currEffect;
+            respDoc["effectName"] = String(strip.getEffectName(currEffect));
+            String resp; serializeJson(respDoc, resp);
+            return WebSocketMCP::ToolResponse(resp);
+          } else if (cmd == "next") {
+            newEffect = (currEffect + 1) % modeCount;
+          } else if (cmd == "prev" || cmd == "previous") {
+            newEffect = (currEffect + modeCount - 1) % modeCount;
+          } else {
+            return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid command\"}");
+          }
         }
 
-        // Check if brightness is zero
-        uint8_t bri = strip.getBrightness();
-        if (bri == 0)
-        {
-          bri = (briLast > 0) ? briLast : 128;
-        }
+        // ensure brightness non-zero before applying effect change
+        uint8_t currBri = strip.getBrightness();
+        if (currBri == 0) currBri = (briLast > 0) ? briLast : 128;
 
-        // Set the LED effect by integer index (0..128)
-        strip.getMainSegment().setMode(effectIndex);
+        // Apply new effect and notify
+        strip.getMainSegment().setMode((uint8_t)newEffect);
         stateUpdated(CALL_MODE_DIRECT_CHANGE);
-        return WebSocketMCP::ToolResponse("{\"success\":true,\"effect\":" + String(effectIndex) + "}");
+
+        DynamicJsonDocument respDoc(256);
+        respDoc["success"] = true;
+        respDoc["effect"] = newEffect;
+        respDoc["effectName"] = String(strip.getEffectName(newEffect));
+        String resp; serializeJson(respDoc, resp);
+        return WebSocketMCP::ToolResponse(resp);
       });
 
   Serial.println("[MCP] LED control tool registered");

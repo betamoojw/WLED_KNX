@@ -10990,6 +10990,30 @@ uint8_t WS2812FX::addEffect(uint8_t id, mode_ptr mode_fn, const char *mode_name)
   }
 }
 
+const char* WS2812FX::getEffectName(unsigned id) const {
+  const char *modeData = getModeData(id);
+  if (!modeData) return "Unknown";
+
+  // static buffer is reused by callers; small and sufficient for effect names
+  static char nameBuf[64];
+  size_t i = 0;
+
+  // copy characters until control/whitespace or end or buffer full
+  while (modeData[i] && modeData[i] != '@' && i < sizeof(nameBuf) - 1) {
+    nameBuf[i] = modeData[i];
+    ++i;
+  }
+  nameBuf[i] = '\0';
+
+  // if we stopped immediately (empty leading token), fallback to copying up to buffer size
+  if (i == 0) {
+    strncpy(nameBuf, modeData, sizeof(nameBuf) - 1);
+    nameBuf[sizeof(nameBuf) - 1] = '\0';
+  }
+
+  return nameBuf;
+}
+
 void WS2812FX::setupEffectData() {
   // Solid must be first! (assuming vector is empty upon call to setup)
   _mode.push_back(&mode_static);
