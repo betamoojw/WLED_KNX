@@ -6,7 +6,7 @@ This user mode leverages the xiaozhi-esp32-mcp as backend service to establish t
 
 * Use the xiaozhi_mcp-1.0.0.zip fetched from the https://www.arduinolibraries.info/libraries/xiaozhi-mcp and only keep the WebSocketMCP.h and WebSocketMCP.cpp files at minimal for Xiaozhi_MCP user mode.
 * Use the wled.h header instead of the ones in the original header list (the wled project has built-in ArduinoJson.h).
-
+* Translate the Chinese into English in the Serial.println function in this WebSocketMCP.cpp file and removed the blank line.
 
 ![Screenshot of WLED info page](assets/screenshot_info.png)
 

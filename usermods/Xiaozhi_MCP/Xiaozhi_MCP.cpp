@@ -1,12 +1,13 @@
-#include "wled.h"
-#include <WebSocketMCP.h>
+
 #include "Xiaozhi_MCP.h"
 #include "src/dependencies/network/Network.h"
 
-
 void Xiaozhi_MCP::setup()
 {
-  if (!isEnabled) return;
+  if (!isEnabled)
+  {
+    return;
+  }
 
   if (((mcpEndpoint == "") || mcpEndpoint.length() == 0))
   {
@@ -20,7 +21,7 @@ void Xiaozhi_MCP::setup()
     MCP_UM_DEBUGLN("[MCP-UM] Network not connected, deferring MCP.begin().");
     return;
   }
-  
+
   IPAddress ip = Network.localIP();
   if (!ip || ip.toString() == String("0.0.0.0"))
   {
@@ -53,7 +54,6 @@ void Xiaozhi_MCP::setup()
   // Additional safety: ensure we're not in a critical network transition
   yield();
 
-
   MCP_UM_DEBUGF("[MCP-UM] Mode Name: '%s'\n", getName());
   MCP_UM_DEBUGF("[MCP-UM] MCP Endpoint: '%s'\n", mcpEndpoint.c_str());
 
@@ -68,17 +68,22 @@ void Xiaozhi_MCP::setup()
 
 void Xiaozhi_MCP::loop()
 {
-  if (!isEnabled) return;
+  if (!isEnabled)
+  {
+    return;
+  }
 
   unsigned long now = millis();
-  if (int((now - lastTime) / 1000) > TIMEOUT_60_SECONDS) {
+  if (int((now - lastTime) / 1000) > TIMEOUT_60_SECONDS)
+  {
     // Reset last time
     lastTime = now;
     // Implement 1-min task logic
     MCP_UM_DEBUGLN("[MCP-UM] 1-min task triggered\n");
 
     // Check network connectivity
-    if (Network.isConnected() && !isSetupDone) {
+    if (Network.isConnected() && !isSetupDone)
+    {
       setup();
     }
   }
@@ -98,7 +103,7 @@ void Xiaozhi_MCP::loop()
     publishMqtt(array);
   }
 #endif
-// Handle MCP client events
+  // Handle MCP client events
   mcpClient.loop();
 }
 
@@ -169,17 +174,25 @@ void Xiaozhi_MCP::publishMqtt(const char *state, bool retain)
 #endif
 }
 
-static void getCurrentRGBW(uint8_t &r, uint8_t &g, uint8_t &b, uint8_t &w) {
+static void getCurrentRGBW(uint8_t &r, uint8_t &g, uint8_t &b, uint8_t &w)
+{
   uint32_t c = SEGCOLOR(0); // primary color slot
-  r = R(c); g = G(c); b = B(c); w = W(c);
+  r = R(c);
+  g = G(c);
+  b = B(c);
+  w = W(c);
 }
 
-void onConnectionStatus(bool connected) {
-  if (connected) {
+void onConnectionStatus(bool connected)
+{
+  if (connected)
+  {
     Serial.println("[MCP] Connected to server");
     // Register tools after successful connection
     registerMcpTools();
-  } else {
+  }
+  else
+  {
     Serial.println("[MCP] Disconnected from server");
   }
 }
@@ -209,12 +222,12 @@ void registerMcpTools()
           briLast = bri;
           bri = 0;
         }
-        
+
         stateUpdated(CALL_MODE_DIRECT_CHANGE);
 
         return WebSocketMCP::ToolResponse("{\"success\":true,\"state\":\"" + state + "\"}");
       });
-  
+
   // Register WLED brightness control tool
   mcpClient.registerTool(
       "led_brightness",
@@ -225,13 +238,17 @@ void registerMcpTools()
         DynamicJsonDocument doc(256);
         deserializeJson(doc, args);
         int brightness = doc["brightness"] | -1;
-        if (brightness < 0 || brightness > 100) {
+        if (brightness < 0 || brightness > 100)
+        {
           return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid brightness\"}");
         }
         // map 0..100 -> 0..255 with rounding
         bri = (uint8_t)(((uint32_t)brightness * 255 + 50) / 100);
         // update last-brightness if turning from zero to non-zero
-        if (bri > 0) briLast = bri;
+        if (bri > 0)
+        {
+          briLast = bri;
+        }
         stateUpdated(CALL_MODE_DIRECT_CHANGE);
 
         return WebSocketMCP::ToolResponse("{\"success\":true,\"brightness\":" + String(brightness) + "}");
@@ -249,7 +266,8 @@ void registerMcpTools()
         int tr = doc["r"] | -1;
         int tg = doc["g"] | -1;
         int tb = doc["b"] | -1;
-        if (tr < 0 || tr > 255 || tg < 0 || tg > 255 || tb < 0 || tb > 255) {
+        if (tr < 0 || tr > 255 || tg < 0 || tg > 255 || tb < 0 || tb > 255)
+        {
           return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid color values\"}");
         }
         // Use uint8_t for r,g,b as requested
@@ -257,17 +275,19 @@ void registerMcpTools()
         uint8_t g = (uint8_t)tg;
         uint8_t b = (uint8_t)tb;
 
-        uint8_t cr,cg,cb,cw,bri; getCurrentRGBW(cr,cg,cb,cw); bri = strip.getBrightness();
+        uint8_t cr, cg, cb, cw, bri;
+        getCurrentRGBW(cr, cg, cb, cw);
+        bri = strip.getBrightness();
         MCP_UM_DEBUGF("[MCP-UM] R=%d G=%d B=%d <- current setting R=%d G=%d B=%d W=%d\n", r, g, b, cr, cg, cb, cw);
         MCP_UM_DEBUGF("[MCP-UM] Current WLED state: bri=%d, on=%d\n", bri, (bri > 0));
 
         // Set the color on the segment
         uint32_t newColor = RGBW32(r, g, b, cw);
         strip.getMainSegment().setColor(0, newColor);
-        
+
         // Update global color variables for GUI synchronization
         colPri[0] = r;
-        colPri[1] = g; 
+        colPri[1] = g;
         colPri[2] = b;
         colPri[3] = cw;
         MCP_UM_DEBUGF("[MCP-UM] segment color and global colPri updated, calling stateUpdated()\n");
@@ -287,7 +307,8 @@ void registerMcpTools()
         DynamicJsonDocument doc(256);
         deserializeJson(doc, args);
         int effectIndex = doc["effect"] | -1;
-        if (effectIndex < 0 || effectIndex > 128) {
+        if (effectIndex < 0 || effectIndex > 128)
+        {
           return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"invalid effect index\"}");
         }
         // Set the LED effect by integer index (0..128)
@@ -295,7 +316,7 @@ void registerMcpTools()
         stateUpdated(CALL_MODE_DIRECT_CHANGE);
         return WebSocketMCP::ToolResponse("{\"success\":true,\"effect\":" + String(effectIndex) + "}");
       });
-      
+
   Serial.println("[MCP] LED control tool registered");
 }
 

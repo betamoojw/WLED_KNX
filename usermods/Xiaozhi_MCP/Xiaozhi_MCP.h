@@ -43,8 +43,6 @@ public:
   const char *getName() { return "Xiaozhi_MCP"; }
 
 private:
-
-
   // --- Config values (editable via JSON/UI) ---
   bool isEnabled = false;
   unsigned long connRetryInterval = 5000;
