@@ -8,6 +8,10 @@ This License Management  user mode offers multiple protections for some other cu
 
 ![Screenshot of WLED usermod settings page](assets/screenshot_settings.png)
 
+![Screenshot of WLED edit page](assets/screenshot_edit.png)
+
+![Screenshot of device key improt](assets/screenshot_key_import.png)
+
 
 ## Features
  - ✨ Display the License Management status (read-only) in the `Info` tab
