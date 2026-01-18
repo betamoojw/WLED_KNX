@@ -178,12 +178,12 @@ void License_Mgnt::getDevKeyStatusString(const int8_t devKeyStatus, String &stat
       LM_UM_DEBUGF("[LM-UM] Device key is not imported\n");
       break;
     case -2:
-      statusStr = "Invalid";
-      LM_UM_DEBUGF("[LM-UM] Device key is invalid\n");
+      statusStr = "Error";
+      LM_UM_DEBUGF("[LM-UM] Device key open error\n");
       break;
     case -3:
-      statusStr = "Error";
-      LM_UM_DEBUGF("[LM-UM] Device key validation error\n");
+      statusStr = "Invalid";
+      LM_UM_DEBUGF("[LM-UM] Device key is invalid\n");
       break;
     default:
       statusStr = "Unknown";
