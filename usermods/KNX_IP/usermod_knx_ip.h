@@ -34,7 +34,7 @@
 class KnxIpUsermod : public Usermod {
 public:
   // --- Config values (editable via JSON/UI) ---
-  bool  enabled = true;
+  bool  enabled = false;
   char  individualAddr[16] = "1.1.100";
   // --- GA Table cache ---
   mutable String gaTableCache;

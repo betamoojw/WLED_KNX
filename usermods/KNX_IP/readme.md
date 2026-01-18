@@ -26,3 +26,8 @@ See `/test/README_TESTING.md` and `/test/GA_CONFLICT_TESTS.md` for detailed test
 ## Debug Logging
 
 See `README_KNX_DEBUG.md` for information on enabling detailed debug output for troubleshooting.
+
+## Todo
+- Use the License_Mgnt instead of the internal license management in the KNX_IP user mode.
+- If running in the WiFi Access Point mode (without any network WiFi/Ethernet connection), it will not run the real KNX_IP service.
+- Added the enabled checkout to configure the status (i.e. group output objects) updated to the KNX bus.
