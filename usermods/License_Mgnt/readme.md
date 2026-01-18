@@ -4,13 +4,17 @@
 
 This License Management  user mode offers multiple protections for some other customized user modes and governs the usage or redistribution of software.
 
-![Screenshot of WLED info page](assets/screenshot_info.png)
+![Screenshot of WLED info page (license_not_imported)](assets/screenshot_info_license_not_imported.png)
+
+![Screenshot of WLED info page (license_invalid)](assets/screenshot_info_license_invalid.png)
+
+![Screenshot of WLED info page (license_valid_forever)](assets/screenshot_info_license_valid_forever.png)
 
 ![Screenshot of WLED usermod settings page](assets/screenshot_settings.png)
 
 ![Screenshot of WLED edit page](assets/screenshot_edit.png)
 
-![Screenshot of device key improt](assets/screenshot_key_import.png)
+![Screenshot of device key import](assets/screenshot_key_import.png)
 
 
 ## Features
