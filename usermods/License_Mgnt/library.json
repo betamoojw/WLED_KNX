@@ -1,0 +1,5 @@
+{
+  "name": "License_Mgnt",
+  "build": { "libArchive": false },
+  "dependencies": {}
+}
