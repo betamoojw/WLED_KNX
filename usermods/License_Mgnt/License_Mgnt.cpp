@@ -111,8 +111,17 @@ void License_Mgnt::addToJsonInfo(JsonObject &root)
     uint8_t trialMinsLeft = getTrialMinsLeft();
     if (trialMinsLeft > 0)
     {
-      trialInfo.add(String(trialMinsLeft) + " mins left");
-      LM_UM_DEBUGF("[LM-UM] Free trial active: %d mins left\n", trialMinsLeft);
+      if (trialMinsLeft == 1)
+      {
+        trialInfo.add(String(trialMinsLeft) + " min left");
+        LM_UM_DEBUGF("[LM-UM] Free trial active: %d min left\n", trialMinsLeft);
+      }
+      else
+      {
+        trialInfo.add(String(trialMinsLeft) + " mins left");
+        LM_UM_DEBUGF("[LM-UM] Free trial active: %d mins left\n", trialMinsLeft);
+      }
+      
     }
     else
     {
