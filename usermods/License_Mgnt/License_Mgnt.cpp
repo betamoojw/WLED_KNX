@@ -240,8 +240,8 @@ String License_Mgnt::getStoredDeviceKey()
 }
 
 const char License_Mgnt::_name[] PROGMEM = "License_Mgnt";
-const char License_Mgnt::_licenseStatus[] PROGMEM = "License Status";
-const char License_Mgnt::_deviceId[] PROGMEM = "Device ID";
+const char License_Mgnt::_licenseStatus[] PROGMEM = "License Status (read-only)";
+const char License_Mgnt::_deviceId[] PROGMEM = "Device ID (read-only)";
 
 static License_Mgnt license_mgnt;
 REGISTER_USERMOD(license_mgnt);
