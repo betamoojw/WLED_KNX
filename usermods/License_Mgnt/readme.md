@@ -10,9 +10,9 @@ This License Management  user mode offers multiple protections for some other cu
 
 
 ## Features
- - ✨ Display the License Management status in the `Info` tab
- - ✨ Display the device ID in usermod settings page
- - ✨ Import the device key in usermod settings page
+ - ✨ Display the License Management status (read-only) in the `Info` tab
+ - ✨ Display the device ID (read-only) in usermod settings page
+ - ✨ Import the device key in host + '/edit' link page
  - ✨ If not right device key imported, it allows user have 60 mins free trial
 
 

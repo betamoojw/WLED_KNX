@@ -2,11 +2,27 @@
 
 void License_Mgnt::setup()
 {
+  LM_UM_DEBUGLN("[LM-UM] License Management Usermod setup started");  
 
-  isSetupDone = true;
+  // Validate the device key on setup
+  devKeyStatus = validateDeviceKey();
+  getDevKeyStatusString(devKeyStatus, licenseStatus);
+  deviceId = getDeviceId();
+
+  if (0 == devKeyStatus)
+  {
+    LM_UM_DEBUGLN("[LM-UM] Device key validated successfully on setup");
+    String deviceKey = getStoredDeviceKey();
+    LM_UM_DEBUGF("[LM-UM] Device key retrieved from storage is %s\n", deviceKey.c_str());
+  }
+  else
+  {
+    LM_UM_DEBUGF("[LM-UM] Device key validation failed on setup (status=%d)\n", devKeyStatus);
+  }
 
   // Initialize last time
   lastTime = millis();
+  LM_UM_DEBUGLN("[LM-UM] License Management Usermod initialized\n");
 }
 
 void License_Mgnt::loop()
@@ -24,14 +40,16 @@ void License_Mgnt::loop()
     if (true == rebootRequested)
     {
       LM_UM_DEBUGLN("[LM-UM] Reboot requested, performing reboot now...\n");
-      delay(100); // Allow debug messages to flush
+      delay(1000); // Allow debug messages to flush
       WLED::instance().reset();
     }
 
-    int8_t devKeyStatus = validateDeviceKey();
+    // Check license status in case device key was not valid before
+    devKeyStatus = validateDeviceKey();
+    getDevKeyStatusString(devKeyStatus, licenseStatus);
     if (0 != devKeyStatus)
     {
-      LM_UM_DEBUGF("[LM-UM] Fail to validate device key (status=%d)\n", devKeyStatus);
+      LM_UM_DEBUGF("[LM-UM] Fail to validate device key (status=%d, %s)\n", devKeyStatus, licenseStatus.c_str());
 
       LM_UM_DEBUGF("[LM-UM] Have %d minutes to run KNX_IP user mode if no valid key is provided\n", TIMEOUT_60_MINUTES);
       LM_UM_DEBUGF("[LM-UM] Will force reboot once %d-min timeout reached\n", TIMEOUT_60_MINUTES);
@@ -63,9 +81,7 @@ void License_Mgnt::loop()
 #ifndef WLED_DISABLE_MQTT
   if (WLED_MQTT_CONNECTED)
   {
-    char array[10];
-    snprintf(array, sizeof(array), "%s", deviceId.c_str());
-    publishMqtt(array);
+    // Todo: adjust topic as needed
   }
 #endif
 }
@@ -83,27 +99,11 @@ void License_Mgnt::addToJsonInfo(JsonObject &root)
 
   // Check license status
   JsonArray licenseInfo = user.createNestedArray("License");
-  int8_t devKeyStatus = validateDeviceKey();
-  if (0 == devKeyStatus)
-  {
-    licenseInfo.add("Forever");
-  }
-  else if (-1 == devKeyStatus)
-  {
-    licenseInfo.add("Not Imported");
-    LM_UM_DEBUGF("[LM-UM] Device key is not imported\n");
-  }
-  else if (-2 == devKeyStatus)
-  {
-    licenseInfo.add("Invalid");
-    LM_UM_DEBUGF("[LM-UM] Device key is invalid\n");
-  }
-  else
-  {
-    licenseInfo.add("Error");
-    LM_UM_DEBUGF("[LM-UM] Device key validation error\n");
-  }
+  String devKeyStatusStr;
+  getDevKeyStatusString(devKeyStatus, devKeyStatusStr);
+  licenseInfo.add(devKeyStatusStr);
 
+  // Check free trial status if device key is not valid
   if (0 != devKeyStatus)
   {
     JsonArray trialInfo = user.createNestedArray("Free Trial");
@@ -126,7 +126,6 @@ void License_Mgnt::addToConfig(JsonObject &root)
   JsonObject top = root.createNestedObject(FPSTR(_name));
   top[FPSTR(_licenseStatus)] = licenseStatus;
   top[FPSTR(_deviceId)] = deviceId;
-  top[FPSTR(_deviceKey)] = deviceKey;
 }
 
 // Append useful info to the usermod settings gui
@@ -139,9 +138,8 @@ bool License_Mgnt::readFromConfig(JsonObject &root)
 {
   JsonObject top = root[FPSTR(_name)];
   bool configComplete = !top.isNull();
-  configComplete &= getJsonValue(top[FPSTR(_licenseStatus)], licenseStatus);
-  configComplete &= getJsonValue(top[FPSTR(_deviceId)], deviceId);
-  configComplete &= getJsonValue(top[FPSTR(_deviceKey)], deviceKey);
+  // configComplete &= getJsonValue(top[FPSTR(_licenseStatus)], licenseStatus); // licenseStatus is read-only
+  // configComplete &= getJsonValue(top[FPSTR(_deviceId)], deviceId); // deviceId is read-only
   return configComplete;
 }
 
@@ -167,10 +165,72 @@ void License_Mgnt::warningEffectBeforeReboot()
   rebootRequested = true;
 }
 
+void License_Mgnt::getDevKeyStatusString(const int8_t devKeyStatus, String &statusStr)
+{
+  switch (devKeyStatus)
+  {
+    case 0:
+      statusStr = "Valid and Forever";
+      LM_UM_DEBUGLN("[LM-UM] Device key is valid and forever\n");
+      break;
+    case -1:
+      statusStr = "Not Imported";
+      LM_UM_DEBUGF("[LM-UM] Device key is not imported\n");
+      break;
+    case -2:
+      statusStr = "Invalid";
+      LM_UM_DEBUGF("[LM-UM] Device key is invalid\n");
+      break;
+    case -3:
+      statusStr = "Error";
+      LM_UM_DEBUGF("[LM-UM] Device key validation error\n");
+      break;
+    default:
+      statusStr = "Unknown";
+      LM_UM_DEBUGF("[LM-UM] Device key status unknown\n");
+      break;
+  }
+}
+
+String License_Mgnt::getStoredDeviceKey()
+{
+#define DEVICE_KEY_FILE "/DEVICE_KEY" // NOTE - device key file name
+#define DEV_KEY_DEBUG_NAME "DEV-KEY: "
+
+  // Retrieve the stored device key from persistent storage
+  String storedDeviceKey = "";
+  
+  if (WLED_FS.exists(DEVICE_KEY_FILE))
+  {
+    LM_UM_DEBUGLN(DEV_KEY_DEBUG_NAME "Reading the device key file...");
+    File file = WLED_FS.open(DEVICE_KEY_FILE, "r");
+    if (file)
+    {
+      size_t size = file.size();
+      char *buf = new char[size + 1];
+      file.readBytes(buf, size);
+      buf[size] = '\0';
+      storedDeviceKey = String(buf);
+      delete[] buf;
+      file.close();
+      LM_UM_DEBUGLN(DEV_KEY_DEBUG_NAME "Device key file read successfully.");
+    }
+    else
+    {
+      LM_UM_DEBUGLN(DEV_KEY_DEBUG_NAME "Failed to open device key file!");
+    }
+  }
+  else
+  {
+    LM_UM_DEBUGLN(DEV_KEY_DEBUG_NAME "Device key file not found.");
+  }
+
+  return storedDeviceKey;
+}
+
 const char License_Mgnt::_name[] PROGMEM = "License_Mgnt";
 const char License_Mgnt::_licenseStatus[] PROGMEM = "License Status";
 const char License_Mgnt::_deviceId[] PROGMEM = "Device ID";
-const char License_Mgnt::_deviceKey[] PROGMEM = "Device Key";
 
 static License_Mgnt license_mgnt;
 REGISTER_USERMOD(license_mgnt);

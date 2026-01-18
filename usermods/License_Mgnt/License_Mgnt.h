@@ -47,9 +47,8 @@ private:
   // --- Config values (editable via JSON/UI) ---
   String licenseStatus = "";
   String deviceId = "";
-  String deviceKey = ""; 
 
-  bool isSetupDone = false;
+  int8_t devKeyStatus = -1; // 0=valid, -1=not imported, -2=invalid, -3=error
   unsigned long lastTime = 0;
   uint8_t counter = 0;
   uint8_t trialMinsLeft = TIMEOUT_60_MINUTES;
@@ -58,7 +57,6 @@ private:
   static const char _name[];
   static const char _licenseStatus[];
   static const char _deviceId[];
-  static const char _deviceKey[];
 
   const int TIMEOUT_60_SECONDS = 60;
   const int TIMEOUT_60_MINUTES = 60;
@@ -66,6 +64,8 @@ private:
   // any private methods should go here (non-inline method should be defined out of class)
   void publishMqtt(const char *state, bool retain = false); // example for publishing MQTT message
   void warningEffectBeforeReboot();
+  void getDevKeyStatusString(const int8_t devKeyStatus, String &statusStr);
+  String getStoredDeviceKey();
 
   inline uint8_t getTrialMinsLeft() const { return trialMinsLeft; }
   inline void setTrialMinsLeft(uint8_t mins) { trialMinsLeft = mins; }
