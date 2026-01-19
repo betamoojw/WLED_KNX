@@ -8,6 +8,10 @@ This user mode leverages the xiaozhi-esp32-mcp as backend service to establish t
 * Use the wled.h header instead of the ones in the original header list (the wled project has built-in ArduinoJson.h).
 * Translate the Chinese into English in the Serial.println function in this WebSocketMCP.cpp file and removed the blank line.
 
+Copy all the content in the section `RO Device ID For Key` in License_Mgnt and send it to the vendor for key generation and service authorization. Without the device key, it will have a 60-minute FREE trial. 
+
+Go to your device host ip + `/edit` (e.g. http://192.168.71.24/edit) in browser and import the key file naming `DEVICE_KEY`.
+
 ![Screenshot of WLED info mcp disconnected page](assets/screenshot_info_mcp_disconnected.png)
 
 ![Screenshot of WLED info mcp connected page](assets/screenshot_info_mcp_connected.png)

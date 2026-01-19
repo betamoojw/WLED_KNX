@@ -8,6 +8,10 @@ This License Management  user mode offers multiple protections for some other cu
 
 ![Screenshot of WLED info page (license_invalid)](assets/screenshot_info_license_invalid.png)
 
+Copy all the content in the section `RO Device ID For Key` in License_Mgnt and send it to the vendor for key generation and service authorization. Without the device key, it will have a 60-minute FREE trial. 
+
+Go to your device host ip + `/edit` (e.g. http://192.168.71.24/edit) in browser and import the key file naming `DEVICE_KEY`.
+
 ![Screenshot of WLED info page (license_valid_forever)](assets/screenshot_info_license_valid_forever.png)
 
 ![Screenshot of WLED usermod settings page](assets/screenshot_settings.png)
