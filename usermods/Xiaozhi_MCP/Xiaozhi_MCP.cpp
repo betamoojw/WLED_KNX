@@ -219,13 +219,13 @@ static void onConnectionStatus(bool connected)
 {
   if (connected)
   {
-    Serial.println("[MCP] Connected to server");
+    MCP_UM_DEBUGLN("[MCP-UM] Connected to server");
     // Register tools after successful connection
     registerMcpTools(terminalAlias);
   }
   else
   {
-    Serial.println("[MCP] Disconnected from server");
+    MCP_UM_DEBUGLN("[MCP-UM] Disconnected from server");
   }
 }
 
@@ -239,7 +239,7 @@ static void registerMcpTools(const String &alias)
   registerColorCtrlTool(alias);
   registerEffectCtrlTool(alias);
 
-  Serial.println("[MCP] LED control tool registered");
+  MCP_UM_DEBUGLN("[MCP-UM] LED control tool registered");
 }
 
 // (place these new helper functions near the existing registerMcpTools implementation)

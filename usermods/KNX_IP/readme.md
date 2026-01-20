@@ -14,6 +14,10 @@ Go to your device host ip + `/edit` (e.g. http://192.168.71.24/edit) in browser 
 
 ![Screenshot of WLED usermod settings knx ip with device key page page](assets/screenshot_settingsknx_ip_with_device_key.png)
 
+ - ✨ WLED KNX_IP usermod and its device bus data monitoring in ETS
+![Screenshot of knx_ip usermod -> bus data monitoring in ETS](assets/screenshot_bus_data_monitoring_in_ETS.png)
+
+
 ## Installation
 
 Copy the example `platformio_override_KNX_IP.ini` to the root directory and rename it to `platformio_override.ini`.  This file should be placed in the same directory as `platformio.ini`.
