@@ -310,6 +310,7 @@ extern byte realtimeMode;           // used in getMappedPixelIndex()
 #define FX_MODE_2DFIRENOISE            149
 #define FX_MODE_2DSQUAREDSWIRL         150
 // #define FX_MODE_2DFIRE2012             151
+#define FX_MODE_PACMAN                 151 // gap fill (non-SR). Do NOT renumber; SR-ID range must remain stable.
 #define FX_MODE_2DDNA                  152
 #define FX_MODE_2DMATRIX               153
 #define FX_MODE_2DMETABALLS            154
@@ -965,7 +966,8 @@ class WS2812FX {
     };
 
     unsigned long now, timebase;
-    inline uint32_t getPixelColor(unsigned n) const { return (n < getLengthTotal()) ? _pixels[n] : 0; } // returns color of pixel n
+    inline uint32_t getPixelColor(unsigned n) const { return (getMappedPixelIndex(n) < getLengthTotal()) ? _pixels[n] : 0; } // returns color of pixel n, black if out of (mapped) bounds
+    inline uint32_t getPixelColorNoMap(unsigned n) const { return (n < getLengthTotal()) ? _pixels[n] : 0; } // ignores mapping table
     inline uint32_t getLastShow() const             { return _lastShow; }                 // returns millis() timestamp of last strip.show() call
 
     const char *getModeData(unsigned id = 0) const  { return (id && id < _modeCount) ? _modeData[id] : PSTR("Solid"); }
@@ -976,6 +978,11 @@ class WS2812FX {
     inline Segment& getMainSegment()      { return _segments[getMainSegmentId()]; }       // returns reference to main segment
     inline Segment* getSegments()         { return &(_segments[0]); }                     // returns pointer to segment vector structure (warning: use carefully)
 
+    // Return a short, human readable effect name for given effect id.
+    // This extracts the leading name portion from the stored mode data string
+    // (mode data contains the effect name plus optional UI metadata).
+    // Returns pointer to an internal static buffer (overwritten on subsequent calls).
+    const char* getEffectName(unsigned id) const;
   // 2D support (panels)
 
 #ifndef WLED_DISABLE_2D

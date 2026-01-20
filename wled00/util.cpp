@@ -213,7 +213,7 @@ void releaseJSONBufferLock()
 
 
 // extracts effect mode (or palette) name from names serialized string
-// caller must provide large enough buffer for name (including SR extensions)!
+// caller must provide large enough buffer for name (including SR extensions)! maxLen is (buffersize - 1)
 uint8_t extractModeName(uint8_t mode, const char *src, char *dest, uint8_t maxLen)
 {
   if (src == JSON_mode_names || src == nullptr) {
@@ -235,7 +235,7 @@ uint8_t extractModeName(uint8_t mode, const char *src, char *dest, uint8_t maxLe
 
   if (src == JSON_palette_names && mode > 255-customPalettes.size()) {
     snprintf_P(dest, maxLen, PSTR("~ Custom %d ~"), 255-mode);
-    dest[maxLen-1] = '\0';
+    dest[maxLen] = '\0';
     return strlen(dest);
   }
 
@@ -336,7 +336,7 @@ uint8_t extractModeSlider(uint8_t mode, uint8_t slider, char *dest, uint8_t maxL
           case 0:  strncpy_P(dest, PSTR("FX Speed"), maxLen); break;
           case 1:  strncpy_P(dest, PSTR("FX Intensity"), maxLen); break;
         }
-        dest[maxLen] = '\0'; // strncpy does not necessarily null terminate string
+        dest[maxLen-1] = '\0'; // strncpy does not necessarily null terminate string
       }
     }
     return strlen(dest);
@@ -1225,3 +1225,74 @@ String getDeviceId() {
   return cachedDeviceId;
 }
 
+// Generate a device key based on SHA1 hash of the device ID salted with a random string.
+// Returns: original SHA1 + last 4 chars of double-hashed SHA1 (42 chars total)
+String getDeviceKey() {
+  static String cachedDeviceKey = "";
+  if (cachedDeviceKey.length() > 0) return cachedDeviceKey;
+
+  // First hash: SHA1 of device ID
+  String firstHash = computeSHA1(getDeviceId());
+
+  // Second hash: SHA1 of the first hash
+  String salt = "Q9m#T4vP!s2Lx8Z@"; // random salt to make device key different from device ID
+  firstHash = computeSHA1(firstHash + salt);
+  String secondHash = computeSHA1(firstHash);
+
+  // Concatenate first hash + last 2 chars of second hash
+  cachedDeviceKey = firstHash + secondHash.substring(38);
+
+  return cachedDeviceKey;
+}
+
+// Validate the device key stored in the filesystem
+// Returns: 0 if valid, -1 if file not found, -2 if file open error, -3 if invalid
+int8_t validateDeviceKey()
+{
+#define DEVICE_KEY_FILE "/DEVICE_KEY" // NOTE - device key file name
+#define DEV_KEY_DEBUG_NAME "DEV-KEY: "
+
+  if (WLED_FS.exists(DEVICE_KEY_FILE))
+  {
+    DEBUG_PRINT(F(DEV_KEY_DEBUG_NAME "Read the device key file: "));
+    File file = WLED_FS.open(DEVICE_KEY_FILE, "r");
+    if (!file)
+    {
+      DEBUG_PRINTLN("Failed to open device key file!");
+      return -2; // file open error
+    }
+    else
+    {
+      size_t size = file.size();
+      char *buf = new char[size + 1];
+      file.readBytes(buf, size);
+      buf[size] = '\0';
+      String content = String(buf);
+      delete[] buf;
+      file.close();
+      DEBUG_PRINTLN("Device key file read successfully.");
+
+      String deviceKey = getDeviceKey();
+      DEBUG_PRINT(F( "Computed device key: "));
+      DEBUG_PRINTLN(deviceKey);
+      DEBUG_PRINT(F("Stored device key:   "));
+      DEBUG_PRINTLN(content);
+
+      if (content.equals(deviceKey))
+      {
+        DEBUG_PRINTLN(F("Device key is valid."));
+        return 0; // valid
+      }
+      else
+      {
+        DEBUG_PRINTLN(F("Device key is INVALID!"));
+        return -3; // invalid
+      }
+    }
+  }
+  else
+  {
+    DEBUG_PRINTLN(F("Device key file not found."));
+    return -1; // file not found
+  }
+}

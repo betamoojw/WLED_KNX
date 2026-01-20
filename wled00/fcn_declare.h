@@ -200,6 +200,7 @@ void getTimeString(char* out);
 bool checkCountdown();
 void setCountdown();
 byte weekdayMondayFirst();
+bool isTodayInDateRange(byte monthStart, byte dayStart, byte monthEnd, byte dayEnd);
 void checkTimers();
 void calculateSunriseAndSunset();
 void setTimeFromAPI(uint32_t timein);
@@ -403,6 +404,8 @@ void checkSettingsPIN(const char *pin);
 uint16_t crc16(const unsigned char* data_p, size_t length);
 String computeSHA1(const String& input);
 String getDeviceId();
+String getDeviceKey();
+int8_t validateDeviceKey();
 uint16_t beatsin88_t(accum88 beats_per_minute_88, uint16_t lowest = 0, uint16_t highest = 65535, uint32_t timebase = 0, uint16_t phase_offset = 0);
 uint16_t beatsin16_t(accum88 beats_per_minute, uint16_t lowest = 0, uint16_t highest = 65535, uint32_t timebase = 0, uint16_t phase_offset = 0);
 uint8_t beatsin8_t(accum88 beats_per_minute, uint8_t lowest = 0, uint8_t highest = 255, uint32_t timebase = 0, uint8_t phase_offset = 0);
@@ -496,14 +499,6 @@ class JSONBufferGuard {
     explicit inline operator bool() const { return owns_lock(); };
     inline void release() { if (holding_lock) releaseJSONBufferLock(); holding_lock = false; }
 };
-
-#ifdef WLED_ADD_EEPROM_SUPPORT
-//wled_eeprom.cpp
-void applyMacro(byte index);
-void deEEP();
-void deEEPSettings();
-void clearEEPROM();
-#endif
 
 //wled_math.cpp
 //float cos_t(float phi); // use float math

@@ -7,7 +7,8 @@
  */
 
 // version code in format yymmddb (b = daily build)
-#define VERSION 2506160
+// #define VERSION 2506160
+#define VERSION 2601180
 
 //uncomment this if you have a "my_config.h" file you'd like to use
 //#define WLED_USE_MY_CONFIG
@@ -122,9 +123,6 @@
 #endif
 
 #include <ESPAsyncWebServer.h>
-#ifdef WLED_ADD_EEPROM_SUPPORT
-  #include <EEPROM.h>
-#endif
 #include <WiFiUdp.h>
 #include <DNSServer.h>
 #include <SPIFFSEditor.h>
@@ -822,7 +820,7 @@ WLED_GLOBAL byte timerHours[]     _INIT_N(({ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }));
 WLED_GLOBAL int8_t timerMinutes[] _INIT_N(({ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }));
 WLED_GLOBAL byte timerMacro[]     _INIT_N(({ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }));
 //weekdays to activate on, bit pattern of arr elem: 0b11111111: sun,sat,fri,thu,wed,tue,mon,validity
-WLED_GLOBAL byte timerWeekday[]   _INIT_N(({ 255, 255, 255, 255, 255, 255, 255, 255, 255, 255 }));
+WLED_GLOBAL byte timerWeekday[]   _INIT_N(({ 254, 254, 254, 254, 254, 254, 254, 254, 254, 254 }));
 //upper 4 bits start, lower 4 bits end month (default 28: start month 1 and end month 12)
 WLED_GLOBAL byte timerMonth[]     _INIT_N(({28,28,28,28,28,28,28,28}));
 WLED_GLOBAL byte timerDay[]       _INIT_N(({1,1,1,1,1,1,1,1}));
@@ -894,6 +892,7 @@ WLED_GLOBAL bool doCloseFile _INIT(false);
 WLED_GLOBAL byte currentPreset _INIT(0);
 
 WLED_GLOBAL byte errorFlag _INIT(0);
+WLED_GLOBAL char errorDetails[256] _INIT({0}); // Additional error details for specific errors
 
 WLED_GLOBAL String messageHead, messageSub;
 WLED_GLOBAL byte optionType;
