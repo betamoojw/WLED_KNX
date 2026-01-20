@@ -1610,14 +1610,14 @@ static void dumpBytesHexLocal(const uint8_t* p, uint8_t len) {
   if (!p || !len) return;
 
 #ifdef KNX_UM_DEBUG
-  Serial.print("[KNX-UM][TIME] Raw: ");
+  KNX_UM_DEBUG("[KNX-UM][TIME] Raw: ");
 #endif
 
   for (uint8_t i = 0; i < len; i++) {
 #ifdef KNX_UM_DEBUG
-    if (p[i] < 16) Serial.print('0');
-    Serial.print(p[i], HEX);
-    Serial.print(i + 1 < len ? ' ' : ' ');
+    if (p[i] < 16) KNX_UM_DEBUG('0');
+    KNX_UM_DEBUG(p[i], HEX);
+    KNX_UM_DEBUG(i + 1 < len ? ' ' : ' ');
 #endif
   }
   KNX_UM_DEBUGLN();
@@ -2145,13 +2145,13 @@ void KnxIpUsermod::setup() {
     KNX.addGroupObject(GA_IN_BRI_REL, DptMain::DPT_3xx, false, true); 
     KNX.onGroup(GA_IN_BRI_REL, [this](uint16_t, DptMain, KnxService s, const uint8_t* p, uint8_t l){ 
 #ifdef KNX_UM_DEBUG
-      Serial.print("[KNX-UM] KNX payload: ");
+      KNX_UM_DEBUG("[KNX-UM] KNX payload: ");
       for (uint8_t i = 0; i < l; ++i) {
-          if (p[i] < 0x10) Serial.print("0");
-          Serial.print(p[i], HEX);
-          Serial.print(" ");
+          if (p[i] < 0x10) KNX_UM_DEBUG("0");
+          KNX_UM_DEBUG(p[i], HEX);
+          KNX_UM_DEBUG(" ");
       }
-      Serial.println();
+      KNX_UM_DEBUGLN();
 #endif
       if (s==KnxService::GroupValue_Write && l>=1) onKnxBrightnessRel(p[0]); 
     }); 

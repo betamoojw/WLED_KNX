@@ -5,6 +5,24 @@
 #include <WebSocketsClient.h>
 #include <functional>
 
+// Debug logging control: define XIAOZHI_MCP_DEBUG at build time to enable verbose logs
+#ifdef XIAOZHI_MCP_DEBUG
+#define XIAOZHI_MCP_DEBUGF(...) Serial.printf(__VA_ARGS__)
+#define XIAOZHI_MCP_DEBUGLN(msg) Serial.println(msg)
+#else
+#define XIAOZHI_MCP_DEBUGF(...)
+#define XIAOZHI_MCP_DEBUGLN(msg)
+#endif
+
+// Warning logging (always on unless explicitly suppressed)
+#ifndef XIAOZHI_MCP_SUPPRESS_WARN
+#define XIAOZHI_MCP_WARNF(...) Serial.printf(__VA_ARGS__)
+#define XIAOZHI_MCP_WARNLN(msg) Serial.println(msg)
+#else
+#define XIAOZHI_MCP_WARNF(...)
+#define XIAOZHI_MCP_WARNLN(msg)
+#endif
+
 /**
  * WebSocketMCP类
  * 封装了与MCP服务器的WebSocket连接及其通信
