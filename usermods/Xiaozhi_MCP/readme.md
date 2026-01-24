@@ -20,6 +20,8 @@ Go to your device host ip + `/edit` (e.g. http://192.168.71.24/edit) in browser 
 
 ![Screenshot of xiaozhi.me mcp endpoint page](assets/xiaozhi.me_mcp_endpoint.png)
 
+![Screenshot of xiaozhi.me mcp endpoint with multiple weds page](assets/xiaozhi.me_mcp_endpoint_with_multi_wleds.png)
+
 
 ## Features
  - ✨ Adds the Xiaozhi AI platform connection status and MCP alias to the `Info` tab

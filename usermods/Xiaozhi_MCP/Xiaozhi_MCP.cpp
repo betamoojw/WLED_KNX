@@ -9,15 +9,15 @@ static String terminalAlias; // declare only; initialize in setup()
 static void onConnectionStatus(bool connected);
 
 // MCP tool registration entry point
-static void registerMcpTools(const String &alias);
+static void registerMcpTools(const String &shortDeviceId, const String &alias);
 
 // Tool registration functions
-static void registerGetStatusTool(const String &alias);
-static void registerGetMcpAliasTool(const String &alias);
-static void registerPowerCtrlTool(const String &alias);
-static void registerBrightnessCtrlTool(const String &alias);
-static void registerColorCtrlTool(const String &alias);
-static void registerEffectCtrlTool(const String &alias);
+static void registerGetStatusTool(const String &shortDeviceId, const String &alias);
+static void registerGetMcpAliasTool(const String &shortDeviceId, const String &alias);
+static void registerPowerCtrlTool(const String &shortDeviceId, const String &alias);
+static void registerBrightnessCtrlTool(const String &shortDeviceId, const String &alias);
+static void registerColorCtrlTool(const String &shortDeviceId, const String &alias);
+static void registerEffectCtrlTool(const String &shortDeviceId, const String &alias);
 
 // Utility functions
 static void getCurrentRGBW(uint8_t &r, uint8_t &g, uint8_t &b, uint8_t &w);
@@ -220,8 +220,12 @@ static void onConnectionStatus(bool connected)
   if (connected)
   {
     MCP_UM_DEBUGLN("[MCP-UM] Connected to server");
+    
+    // Get short device ID (first 4 chars) as suffix
+    const String shortDeviceId = getDeviceId().substring(0, 4);
+    
     // Register tools after successful connection
-    registerMcpTools(terminalAlias);
+    registerMcpTools(shortDeviceId, terminalAlias);
   }
   else
   {
@@ -230,24 +234,25 @@ static void onConnectionStatus(bool connected)
 }
 
 // MCP tool registration entry point
-static void registerMcpTools(const String &alias)
+static void registerMcpTools(const String &shortDeviceId, const String &alias)
 {
-  registerGetStatusTool(alias);
-  registerGetMcpAliasTool(alias);
-  registerPowerCtrlTool(alias);
-  registerBrightnessCtrlTool(alias);
-  registerColorCtrlTool(alias);
-  registerEffectCtrlTool(alias);
+  registerGetStatusTool(shortDeviceId, alias);
+  registerGetMcpAliasTool(shortDeviceId, alias);
+  registerPowerCtrlTool(shortDeviceId, alias);
+  registerBrightnessCtrlTool(shortDeviceId, alias);
+  registerColorCtrlTool(shortDeviceId, alias);
+  registerEffectCtrlTool(shortDeviceId, alias);
 
   MCP_UM_DEBUGLN("[MCP-UM] LED control tool registered");
 }
 
 // (place these new helper functions near the existing registerMcpTools implementation)
-static void registerGetStatusTool(const String &alias)
+static void registerGetStatusTool(const String &shortDeviceId, const String &alias)
 {
+  String name = String("led_status") + "_" + shortDeviceId;
   String description = alias + " 状态";
   mcpClient.registerTool(
-      "led_status",
+      name,
       description,
       "{\"type\":\"object\",\"properties\":{},\"required\":[]}",
       [](const String &args)
@@ -285,11 +290,12 @@ static void registerGetStatusTool(const String &alias)
       });
 }
 
-static void registerGetMcpAliasTool(const String &alias)
+static void registerGetMcpAliasTool(const String &shortDeviceId, const String &alias)
 {
+  String name = String("led_get_alias") + "_" + shortDeviceId;
   String description = alias + " 获取别名";
   mcpClient.registerTool(
-      "led_get_alias",
+      name,
       description,
       "{\"type\":\"object\",\"properties\":{},\"required\":[]}",
       [](const String &args)
@@ -303,11 +309,12 @@ static void registerGetMcpAliasTool(const String &alias)
       });
 }
 
-static void registerPowerCtrlTool(const String &alias)
+static void registerPowerCtrlTool(const String &shortDeviceId, const String &alias)
 {
+  String name = String("led_power") + "_" + shortDeviceId;
   String description = alias + " 开关";
   mcpClient.registerTool(
-      "led_on_off",
+      name,
       description,
       "{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\",\"enum\":[\"on\",\"off\"]}},\"required\":[\"state\"]}",
       [](const String &args)
@@ -334,11 +341,12 @@ static void registerPowerCtrlTool(const String &alias)
       });
 }
 
-static void registerBrightnessCtrlTool(const String &alias)
+static void registerBrightnessCtrlTool(const String &shortDeviceId, const String &alias)
 {
+  String name = String("led_brightness") + "_" + shortDeviceId;
   String description = alias + " 亮度";
   mcpClient.registerTool(
-      "led_brightness",
+      name,
       description,
       "{\"type\":\"object\",\"properties\":{\"brightness\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":100}},\"required\":[\"brightness\"]}",
       [](const String &args)
@@ -365,11 +373,12 @@ static void registerBrightnessCtrlTool(const String &alias)
       });
 }
 
-static void registerColorCtrlTool(const String &alias)
+static void registerColorCtrlTool(const String &shortDeviceId, const String &alias)
 {
+  String name = String("led_color") + "_" + shortDeviceId;
   String description = alias + " 颜色";
   mcpClient.registerTool(
-      "led_color",
+      name,
       description,
       "{\"type\":\"object\",\"properties\":{\"r\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":255},\"g\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":255},\"b\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":255}},\"required\":[\"r\",\"g\",\"b\"]}",
       [](const String &args)
@@ -416,11 +425,12 @@ static void registerColorCtrlTool(const String &alias)
       });
 }
 
-static void registerEffectCtrlTool(const String &alias)
+static void registerEffectCtrlTool(const String &shortDeviceId, const String &alias)
 {
+  String name = String("led_effect") + "_" + shortDeviceId;
   String description = alias + " 动画特效";
   mcpClient.registerTool(
-      "led_effect",
+      name,
       description,
       "{\"type\":\"object\",\"properties\":{\"effect\":{\"anyOf\":[{\"type\":\"integer\",\"minimum\":0,\"maximum\":255},{\"type\":\"string\",\"enum\":[\"current\",\"next\",\"prev\",\"previous\"]}]}},\"required\":[\"effect\"]}",
       [](const String &args)
